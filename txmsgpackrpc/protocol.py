@@ -133,21 +133,13 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
         except AttributeError, e:
             return self.respondCallback(result, msgid)
 
-    def getCallableForMethodName(self, methodName):
-        try:
-            return getattr(self, "remote_" + methodName)
-        except Exception, e:
-            if self._sendErrors:
-                raise
-            raise MsgpackError("Client attempted to call unimplemented method: remote_%" % (methodName,), errno.ENOSYS)
-
     def callRemoteMethod(self, msgid, methodName, params):
         try:
-            method = self.getCallableForMethodName(methodName)
+            method = self.factory.getRemoteMethod(self, methodName)
         except Exception, e:
             if self._sendErrors:
                 raise
-            raise MsgpackError("Client attempted to call unimplemented method: %s" % (methodName,), errno.ENOSYS)
+            raise MsgpackError("Client attempted to call unimplemented method: remote_%s" % (methodName,), errno.ENOSYS)
 
         send_msgid = False
         try:

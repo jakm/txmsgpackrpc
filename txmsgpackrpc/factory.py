@@ -7,7 +7,8 @@ from txmsgpackrpc.handler  import SimpleConnectionHandler
 class MsgpackServerFactory(protocol.Factory):
     protocol = Msgpack
 
-    def __init__(self):
+    def __init__(self, handler):
+        self.handler = handler
         self.connections = set()
 
     def buildProtocol(self, addr):
@@ -19,6 +20,9 @@ class MsgpackServerFactory(protocol.Factory):
 
     def delConnection(self, connection):
         self.connections.remove(connection)
+
+    def getRemoteMethod(self, protocol, methodName):
+        return getattr(self.handler, "remote_" + methodName)
 
 
 class MsgpackClientFactory(protocol.ReconnectingClientFactory):
@@ -51,6 +55,9 @@ class MsgpackClientFactory(protocol.ReconnectingClientFactory):
 
     def delConnection(self, connection):
         self.handler.delConnection(connection)
+
+    def getRemoteMethod(self, protocol, methodName):
+        raise NotImplementedError('Cannot call RPC method on client')
 
 
 __all__ = ['MsgpackServerFactory', 'MsgpackClientFactory']
