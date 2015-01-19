@@ -1,0 +1,13 @@
+Source: txmsgpackrpc
+Maintainer: Jakub Matys <matys.jakub@gmail.com>
+Section: python
+Priority: optional
+Build-Depends: python (>= 2.6), debhelper (>= 7)
+Standards-Version: 3.9.1
+X-Python-Version: >= 2.6, << 2.8
+
+Package: python-txmsgpackrpc
+Architecture: all
+Depends: python (>= 2.6), python (<< 2.8), python-twisted, msgpack-python | python-msgpack
+Description: txmsgpackrpc is a Twisted library to support msgpack-rpc
+
