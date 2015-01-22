@@ -3,10 +3,14 @@ from txmsgpackrpc.factory  import MsgpackServerFactory
 
 class MsgpackRPCServer(object):
 
-    def listenTCP(self, port, **kwargs):
-        from twisted.internet import reactor
-        factory = MsgpackServerFactory(self)
-        return reactor.listenTCP(port, factory, **kwargs)
+    __factory_class = MsgpackServerFactory
+    __factory = None
+
+    @property
+    def factory(self):
+        if not self.__factory:
+            self.__factory = self.__factory_class(self)
+        return self.__factory
 
 
 __all__ = ['MsgpackRPCServer']
