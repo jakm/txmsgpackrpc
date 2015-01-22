@@ -1,5 +1,7 @@
 # http://github.com/donalm/txMsgpack
 # Copyright (c) 2013 Donal McMullan
+
+# https://github.com/jakm/txmsgpackrpc
 # Copyright (c) 2015 Jakub Matys
 
 import errno
