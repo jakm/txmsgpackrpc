@@ -1,6 +1,6 @@
 from twisted.internet import protocol
 
-from txmsgpackrpc.protocol import Msgpack, MsgpackError
+from txmsgpackrpc.protocol import Msgpack
 from txmsgpackrpc.handler  import SimpleConnectionHandler
 
 

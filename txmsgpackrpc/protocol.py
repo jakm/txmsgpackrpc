@@ -4,28 +4,18 @@
 # https://github.com/jakm/txmsgpackrpc
 # Copyright (c) 2015 Jakub Matys
 
-import errno
 import msgpack
 from twisted.internet import defer, protocol
 from twisted.protocols import policies
 from twisted.python import failure
 
+from txmsgpackrpc.error import (ConnectionError, ResponseError, InvalidRequest,
+                                InvalidResponse, InvalidData, TimeoutError)
+
+
 MSGTYPE_REQUEST=0
 MSGTYPE_RESPONSE=1
 MSGTYPE_NOTIFICATION=2
-
-
-class MsgpackError(Exception):
-    def __init__(self, message, errno=0, result=None):
-        """
-        msgpack rpc errors include a 'result' field
-        """
-        self.message = message
-        self.errno   = errno
-        self.result  = result
-
-    def __str__(self):
-        return "[Errno %s] %s" % (self.errno, self.message)
 
 
 class Msgpack(protocol.Protocol, policies.TimeoutMixin):
@@ -59,7 +49,7 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
 
     def createRequest(self, method, params):
         if not self.connected:
-            raise MsgpackError("Not connected")
+            raise ConnectionError("Not connected")
         msgid = self.getNextMsgid()
         message = (MSGTYPE_REQUEST, msgid, method, params)
         self.writeMessage(message)
@@ -70,7 +60,7 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
 
     def createNotification(self, method, params):
         if not self.connected:
-            raise MsgpackError("Not connected")
+            raise ConnectionError("Not connected")
         if not type(params) in (list, tuple):
             params = (params,)
         message = (MSGTYPE_NOTIFICATION, method, params)
@@ -104,15 +94,15 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
             if self._sendErrors:
                 raise
             if not len(message) == 4:
-                raise MsgpackError("Incorrect message length. Expected 4; received %s" % (len(message),), errno.EINVAL)
-            raise MsgpackError("Failed to unpack request.", errno.EINVAL)
+                raise InvalidData("Incorrect message length. Expected 4; received %s" % len(message))
+            raise InvalidData("Failed to unpack request.")
         except Exception:
             if self._sendErrors:
                 raise
-            raise MsgpackError("Unexpected error. Failed to unpack request.", errno.EINVAL)
+            raise InvalidData("Unexpected error. Failed to unpack request.")
 
         if msgid in self._incoming_requests:
-            raise MsgpackError("Request with msgid '%s' already exists" % (msgid,), errno.EALREADY)
+            raise InvalidRequest("Request with msgid '%s' already exists" % msgid)
 
         result = defer.maybeDeferred(self.callRemoteMethod, msgid, methodName, params)
 
@@ -129,7 +119,7 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
         except Exception:
             if self._sendErrors:
                 raise
-            raise MsgpackError("Client attempted to call unimplemented method: remote_%s" % (methodName,), errno.ENOSYS)
+            raise InvalidRequest("Client attempted to call unimplemented method: remote_%s" % methodName)
 
         send_msgid = False
         try:
@@ -150,11 +140,7 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
         except TypeError:
             if self._sendErrors:
                 raise
-            raise MsgpackError("Wrong number of arguments for %s" % (methodName,), errno.EINVAL)
-        except Exception:
-            if self._sendErrors:
-                raise
-            raise MsgpackError("Unexpected error calling %s" % (methodName), 0)
+            raise InvalidRequest("Wrong number of arguments for %s" % methodName)
 
         return result
 
@@ -169,7 +155,7 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
         except Exception, e:
             if self._sendErrors:
                 raise
-            raise MsgpackError("Failed to unpack response: %s" % (e,), errno.EINVAL)
+            raise InvalidResponse("Failed to unpack response: %s" % e)
 
         try:
             df = self._outgoing_requests.pop(msgid)
@@ -177,14 +163,14 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
             # There's nowhere to send this error, except the log
             # if self._sendErrors:
             #     raise
-            # raise MsgpackError("Failed to find dispatched request with msgid %s to match incoming repsonse" % (msgid,), errno.ENOSYS)
+            # raise InvalidResponse("Failed to find dispatched request with msgid %s to match incoming repsonse" % msgid)
             pass
 
         if error is not None:
             # The remote host returned an error, so we need to create a Failure
             # object to pass into the errback chain. The Failure object in turn
             # requires an Exception
-            ex = MsgpackError(error, 0, result=result)
+            ex = ResponseError(error)
             df.errback(failure.Failure(exc_value=ex))
         else:
             df.callback(result)
@@ -214,7 +200,7 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
         except Exception:
             if self._sendErrors:
                 raise
-            raise MsgpackError("ERROR: Failed to write message: %s" % message)
+            raise ConnectionError("ERROR: Failed to write message: %s" % message)
 
         # transport.write returns None
         self.transport.write(message)
@@ -247,7 +233,7 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
     def undefinedMessageReceived(self, message):
         raise NotImplementedError("Msgpack received a message of type '%s', " \
                                   "and no method has been specified to " \
-                                  "handle this." % (message[0],))
+                                  "handle this." % message[0])
 
     def callbackOutgoingRequests(self, func):
         while self._outgoing_requests:
@@ -268,7 +254,7 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
 
     def timeoutConnection(self):
         # print "timeoutConnection"
-        self.callbackOutgoingRequests(lambda d: d.errback(MsgpackError("Request timed out")))
+        self.callbackOutgoingRequests(lambda d: d.errback(TimeoutError("Request timed out")))
 
         policies.TimeoutMixin.timeoutConnection(self)
 
@@ -276,4 +262,4 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
         self.transport.loseConnection()
 
 
-__all__ = ['Msgpack', 'MsgpackError']
+__all__ = ['Msgpack']

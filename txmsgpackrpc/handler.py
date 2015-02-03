@@ -1,7 +1,7 @@
 from twisted.internet import defer
 from twisted.python import log
 
-from txmsgpackrpc.protocol import MsgpackError
+from txmsgpackrpc.error import ConnectionError
 
 
 class SimpleConnectionHandler(object):
@@ -38,7 +38,7 @@ class SimpleConnectionHandler(object):
 
     def waitForConnection(self):
         if not self.factory.continueTrying:
-            raise MsgpackError("Not connected")
+            raise ConnectionError("Not connected")
 
         if self.connection and self.connection.connected:
             return defer.succeed(self)
@@ -57,7 +57,7 @@ class SimpleConnectionHandler(object):
         if self.connection and self.connection.connected:
             self.connection.closeConnection()
 
-        self.callbackWaitingForConnection(lambda d: d.errback(MsgpackError("Not connected")))
+        self.callbackWaitingForConnection(lambda d: d.errback(ConnectionError("Not connected")))
 
         return defer.succeed(None)
 
@@ -78,7 +78,7 @@ class PooledConnectionHandler(object):
     @defer.inlineCallbacks
     def getConnection(self):
         if not self.factory.continueTrying and not self.size:
-            raise MsgpackError("Not connected")
+            raise ConnectionError("Not connected")
 
         while True:
             conn = yield self.connectionQueue.get()
@@ -147,7 +147,7 @@ class PooledConnectionHandler(object):
 
     def waitForConnection(self):
         if not self.factory.continueTrying:
-            raise MsgpackError("Not connected")
+            raise ConnectionError("Not connected")
 
         if self.size:
             return defer.succeed(self)
@@ -169,7 +169,7 @@ class PooledConnectionHandler(object):
             except:
                 pass
 
-        self.callbackWaitingForConnection(lambda d: d.errback(MsgpackError("Not connected")))
+        self.callbackWaitingForConnection(lambda d: d.errback(ConnectionError("Not connected")))
 
         return self.waitForEmptyPool()
 
