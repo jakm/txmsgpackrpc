@@ -1,11 +1,14 @@
-from twisted.internet import defer, reactor
+from twisted.internet import defer, reactor, task
 from txmsgpackrpc.server import MsgpackRPCServer
 
 
 class EchoRPC(MsgpackRPCServer):
 
-    def remote_echo(self, value, msgid=None):
-        return defer.succeed(value)
+    @defer.inlineCallbacks
+    def remote_echo(self, value, delay=None, msgid=None):
+        if delay is not None:
+            yield task.deferLater(reactor, delay, lambda: None)
+        defer.returnValue(value)
 
 
 def main():

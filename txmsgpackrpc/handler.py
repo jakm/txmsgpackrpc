@@ -31,9 +31,7 @@ class SimpleConnectionHandler(object):
     def addConnection(self, connection):
         self.connection = connection
 
-        while self._waitingForConnection:
-            d = self._waitingForConnection.pop()
-            d.callback(self)
+        self.callbackWaitingForConnection(lambda d: d.callback(self))
 
     def delConnection(self, connection):
         self.connection = None
@@ -49,14 +47,17 @@ class SimpleConnectionHandler(object):
         self._waitingForConnection.add(d)
         return d
 
+    def callbackWaitingForConnection(self, func):
+        while self._waitingForConnection:
+            d = self._waitingForConnection.pop()
+            func(d)
+
     def disconnect(self):
         self.factory.continueTrying = 0
         if self.connection and self.connection.connected:
             self.connection.closeConnection()
 
-        while self._waitingForConnection:
-            d = self._waitingForConnection.pop()
-            d.errback(MsgpackError("Not connected"))
+        self.callbackWaitingForConnection(lambda d: d.errback(MsgpackError("Not connected")))
 
         return defer.succeed(None)
 
@@ -118,9 +119,7 @@ class PooledConnectionHandler(object):
         self.pool.append(connection)
         self.size = len(self.pool)
 
-        while self._waitingForConnection:
-            d = self._waitingForConnection.pop()
-            d.callback(self)
+        self.callbackWaitingForConnection(lambda d: d.callback(self))
 
     def delConnection(self, connection):
         try:
@@ -157,6 +156,11 @@ class PooledConnectionHandler(object):
         self._waitingForConnection.add(d)
         return d
 
+    def callbackWaitingForConnection(self, func):
+        while self._waitingForConnection:
+            d = self._waitingForConnection.pop()
+            func(d)
+
     def disconnect(self):
         self.factory.continueTrying = 0
         for conn in self.pool:
@@ -165,9 +169,7 @@ class PooledConnectionHandler(object):
             except:
                 pass
 
-        while self._waitingForConnection:
-            d = self._waitingForConnection.pop()
-            d.errback(MsgpackError("Not connected"))
+        self.callbackWaitingForConnection(lambda d: d.errback(MsgpackError("Not connected")))
 
         return self.waitForEmptyPool()
 
