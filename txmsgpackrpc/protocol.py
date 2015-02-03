@@ -34,7 +34,7 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
 
     @ivar factory: The L{MsgpackClientFactory} or L{MsgpackServerFactory}  which created this L{Msgpack}.
     """
-    def __init__(self, factory, sendErrors=False, timeout=None, packerEncoding="utf-8", unpackerEncoding=None, default=None):
+    def __init__(self, factory, sendErrors=False, timeout=None, packerEncoding="utf-8", unpackerEncoding=None):
         """
         @param factory: factory which created this protocol.
         @type factory: C{protocol.Factory}.
@@ -46,8 +46,6 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
         @type packerEncoding: C{str}
         @param unpackerEncoding: encoding used for decoding msgpack bytes. If None (default), msgpack bytes are deserialized to Python bytes.
         @type unpackerEncoding: C{str}.
-        @param default: if msgpack fails to serialize an object it will pass the object into this method, and try to serialize the result.
-        @type default: C{callable}.
         """
         self.factory = factory
         self._sendErrors = sendErrors
@@ -102,13 +100,13 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
     def requestReceived(self, message):
         try:
             (msgType, msgid, methodName, params) = message
-        except ValueError, e:
+        except ValueError:
             if self._sendErrors:
                 raise
             if not len(message) == 4:
                 raise MsgpackError("Incorrect message length. Expected 4; received %s" % (len(message),), errno.EINVAL)
             raise MsgpackError("Failed to unpack request.", errno.EINVAL)
-        except Exception, e:
+        except Exception:
             if self._sendErrors:
                 raise
             raise MsgpackError("Unexpected error. Failed to unpack request.", errno.EINVAL)
@@ -118,7 +116,7 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
 
         try:
             result = self.callRemoteMethod(msgid, methodName, params)
-        except Exception, e:
+        except Exception:
             if self._sendErrors:
                 f = failure.Failure()
             else:
@@ -132,27 +130,25 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
             result.addBoth(self.endRequest, msgid)
             self._incoming_requests[msgid] = result
             return result
-        except AttributeError, e:
+        except AttributeError:
             return self.respondCallback(result, msgid)
 
     def callRemoteMethod(self, msgid, methodName, params):
         try:
             method = self.factory.getRemoteMethod(self, methodName)
-        except Exception, e:
+        except Exception:
             if self._sendErrors:
                 raise
             raise MsgpackError("Client attempted to call unimplemented method: remote_%s" % (methodName,), errno.ENOSYS)
 
         send_msgid = False
         try:
-            """
-            If the remote_method has a keyword argment called msgid, then pass
-            it the msgid as a keyword argument. 'params' is always a list.
-            """
+            # If the remote_method has a keyword argment called msgid, then pass
+            # it the msgid as a keyword argument. 'params' is always a list.
             method_arguments = method.func_code.co_varnames
             if 'msgid' in method_arguments:
                 send_msgid = True
-        except Exception, e:
+        except Exception:
             pass
 
 
@@ -161,11 +157,11 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
                 result = method(*params, msgid=msgid)
             else:
                 result = method(*params)
-        except TypeError, e:
+        except TypeError:
             if self._sendErrors:
                 raise
             raise MsgpackError("Wrong number of arguments for %s" % (methodName,), errno.EINVAL)
-        except Exception, e:
+        except Exception:
             if self._sendErrors:
                 raise
             raise MsgpackError("Unexpected error calling %s" % (methodName), 0)
@@ -187,21 +183,17 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
 
         try:
             df = self._outgoing_requests.pop(msgid)
-        except KeyError, e:
-            """
-            There's nowhere to send this error, except the log
-            if self._sendErrors:
-                raise
-            raise MsgpackError("Failed to find dispatched request with msgid %s to match incoming repsonse" % (msgid,), errno.ENOSYS)
-            """
+        except KeyError:
+            # There's nowhere to send this error, except the log
+            # if self._sendErrors:
+            #     raise
+            # raise MsgpackError("Failed to find dispatched request with msgid %s to match incoming repsonse" % (msgid,), errno.ENOSYS)
             pass
 
         if error is not None:
-            """
-            The remote host returned an error, so we need to create a Failure
-            object to pass into the errback chain. The Failure object in turn
-            requires an Exception
-            """
+            # The remote host returned an error, so we need to create a Failure
+            # object to pass into the errback chain. The Failure object in turn
+            # requires an Exception
             ex = MsgpackError(error, 0, result=result)
             df.errback(failure.Failure(exc_value=ex))
         else:
@@ -229,10 +221,10 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
     def writeMessage(self, message):
         try:
             message = self._packer.pack(message)
-        except Exception, e:
+        except Exception:
             if self._sendErrors:
                 raise
-            raise MsgpackError("ERROR: Failed to write message: %s" % (message[0], message[1],))
+            raise MsgpackError("ERROR: Failed to write message: %s" % message)
 
         # transport.write returns None
         self.transport.write(message)
@@ -252,7 +244,7 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
             result = self.callRemoteMethod(msgid, methodName, params)
             try:
                 result.addBoth(self.notificationCallback)
-            except AttributeError, e:
+            except AttributeError:
                 self.notificationCallback(result)
         except Exception, e:
             # Log the error - there's no way to return it for a notification
@@ -272,15 +264,15 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
 
     def callbackOutgoingRequests(self, func):
         while self._outgoing_requests:
-           msgid, d = self._outgoing_requests.popitem()
-           func(d)
+            msgid, d = self._outgoing_requests.popitem()
+            func(d)
 
     def connectionMade(self):
         # print "connectionMade"
         self.connected = 1
         self.factory.addConnection(self)
 
-    def connectionLost(self, reason):
+    def connectionLost(self, reason=protocol.connectionDone):
         # print "connectionLost"
         self.connected = 0
         self.factory.delConnection(self)
