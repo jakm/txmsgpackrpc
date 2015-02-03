@@ -114,24 +114,14 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
         if msgid in self._incoming_requests:
             raise MsgpackError("Request with msgid '%s' already exists" % (msgid,), errno.EALREADY)
 
-        try:
-            result = self.callRemoteMethod(msgid, methodName, params)
-        except Exception:
-            if self._sendErrors:
-                f = failure.Failure()
-            else:
-                ex = MsgpackError("Failed to find method: %s" % (methodName,), errno.ENOSYS)
-                f  = failure.Failure(exc_value=ex)
-            return self.respondErrback(f, msgid)
+        result = defer.maybeDeferred(self.callRemoteMethod, msgid, methodName, params)
 
-        try:
-            result.addCallback(self.respondCallback, msgid)
-            result.addErrback(self.respondErrback, msgid)
-            result.addBoth(self.endRequest, msgid)
-            self._incoming_requests[msgid] = result
-            return result
-        except AttributeError:
-            return self.respondCallback(result, msgid)
+        self._incoming_requests[msgid] = result
+
+        result.addCallback(self.respondCallback, msgid)
+        result.addErrback(self.respondErrback, msgid)
+        result.addBoth(self.endRequest, msgid)
+        return result
 
     def callRemoteMethod(self, msgid, methodName, params):
         try:
@@ -241,11 +231,8 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
             return
 
         try:
-            result = self.callRemoteMethod(msgid, methodName, params)
-            try:
-                result.addBoth(self.notificationCallback)
-            except AttributeError:
-                self.notificationCallback(result)
+            result = defer.maybeDeferred(self.callRemoteMethod, msgid, methodName, params)
+            result.addBoth(self.notificationCallback)
         except Exception, e:
             # Log the error - there's no way to return it for a notification
             print e
