@@ -270,6 +270,10 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
                                   "and no method has been specified to " \
                                   "handle this." % (message[0],))
 
+    def callbackOutgoingRequests(self, func):
+        while self._outgoing_requests:
+           msgid, d = self._outgoing_requests.popitem()
+           func(d)
 
     def connectionMade(self):
         # print "connectionMade"
@@ -281,9 +285,13 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
         self.connected = 0
         self.factory.delConnection(self)
 
-        while(len(self._outgoing_requests) > 0):
-            msgid, df = self._outgoing_requests.popitem()
-            df.errback(reason)
+        self.callbackOutgoingRequests(lambda d: d.errback(reason))
+
+    def timeoutConnection(self):
+        # print "timeoutConnection"
+        self.callbackOutgoingRequests(lambda d: d.errback(MsgpackError("Request timed out")))
+
+        policies.TimeoutMixin.timeoutConnection(self)
 
     def closeConnection(self):
         self.transport.loseConnection()
