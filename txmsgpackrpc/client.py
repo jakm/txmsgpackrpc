@@ -34,5 +34,17 @@ def connect_pool(host, port, poolsize=10, isolated=False,
 
     return d
 
+def connect_UNIX(address, connectTimeout=None, waitTimeout=None, maxRetries=5):
+    factory = MsgpackClientFactory(connectTimeout=connectTimeout,
+                                   waitTimeout=waitTimeout)
+    factory.maxRetries = maxRetries
 
-__all__ = ['connect', 'connect_pool']
+    reactor.connectUNIX(address, factory, timeout=connectTimeout)
+
+    d = factory.handler.waitForConnection()
+    d.addCallback(lambda conn: factory.handler)
+
+    return d
+
+
+__all__ = ['connect', 'connect_pool', 'connect_UNIX']
