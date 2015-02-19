@@ -1,8 +1,10 @@
 import distutils.core
 
+__VERSION__ = "0.1"
+
 distutils.core.setup(
     name = "txmsgpackrpc",
-    version = "0.1",
+    version = __VERSION__,
     packages = ["txmsgpackrpc"],
     author = "Jakub Matys",
     author_email = "matys.jakub@gmail.com",
