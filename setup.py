@@ -1,6 +1,6 @@
 import distutils.core
 
-__VERSION__ = "0.1"
+__VERSION__ = "0.2"
 
 distutils.core.setup(
     name = "txmsgpackrpc",

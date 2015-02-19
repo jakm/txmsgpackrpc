@@ -1,3 +1,20 @@
+txmsgpackrpc (0.2) unstable; urgency=low
+
+  * MsgpackRPCServer has propery with factory object
+  * Added URL to copyright header
+  * Added test of the protocol implementation
+  * Added client example
+  * Connection fails after maxRetries attempts
+  * MsgpackError is raised when request is timed out
+  * Pylint issues fixed
+  * Result of remote method is handled in a simpler manner
+  * Multiple error types are used by protocol implementation
+  * Added client function for UNIX sockets and examples
+  * Build automation
+  * Package don't support v 3.0 (quilt)
+
+ -- Jakub Matys <jakub.matys@nodus.cz>  Thu, 19 Feb 2015 13:29:35 +0100
+
 txmsgpackrpc (0.1) unstable; urgency=low
 
   * source package automatically created by stdeb 0.6.0+git
