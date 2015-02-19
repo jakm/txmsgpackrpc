@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from twisted.internet import protocol
 
 from txmsgpackrpc.protocol import Msgpack
@@ -40,7 +42,7 @@ class MsgpackClientFactory(protocol.ReconnectingClientFactory):
         return p
 
     def clientConnectionFailed(self, connector, reason):
-        # print "clientConnectionFailed"
+        # print("clientConnectionFailed")
         connector.timeout = self.connectTimeout
         protocol.ReconnectingClientFactory.clientConnectionFailed(self, connector, reason)
 
@@ -48,7 +50,7 @@ class MsgpackClientFactory(protocol.ReconnectingClientFactory):
             self.handler.callbackWaitingForConnection(lambda d: d.errback(reason))
 
     def clientConnectionLost(self, connector, reason):
-        # print "clientConnectionLost"
+        # print("clientConnectionLost")
         connector.timeout = self.connectTimeout
         protocol.ReconnectingClientFactory.clientConnectionLost(self, connector, reason)
 

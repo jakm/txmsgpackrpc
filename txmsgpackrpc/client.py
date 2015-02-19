@@ -1,3 +1,5 @@
+import sys
+
 from twisted.internet import reactor
 
 from txmsgpackrpc.factory import MsgpackClientFactory
@@ -34,17 +36,19 @@ def connect_pool(host, port, poolsize=10, isolated=False,
 
     return d
 
-def connect_UNIX(address, connectTimeout=None, waitTimeout=None, maxRetries=5):
-    factory = MsgpackClientFactory(connectTimeout=connectTimeout,
-                                   waitTimeout=waitTimeout)
-    factory.maxRetries = maxRetries
+if sys.version_info.major < 3:  # UNIX sockets are not supported for Python 3
+    def connect_UNIX(address, connectTimeout=None, waitTimeout=None, maxRetries=5):
+        factory = MsgpackClientFactory(connectTimeout=connectTimeout,
+                                       waitTimeout=waitTimeout)
+        factory.maxRetries = maxRetries
 
-    reactor.connectUNIX(address, factory, timeout=connectTimeout)
+        reactor.connectUNIX(address, factory, timeout=connectTimeout)
 
-    d = factory.handler.waitForConnection()
-    d.addCallback(lambda conn: factory.handler)
+        d = factory.handler.waitForConnection()
+        d.addCallback(lambda conn: factory.handler)
 
-    return d
+        return d
 
-
-__all__ = ['connect', 'connect_pool', 'connect_UNIX']
+    __all__ = ['connect', 'connect_pool', 'connect_UNIX']
+else:
+    __all__ = ['connect', 'connect_pool']

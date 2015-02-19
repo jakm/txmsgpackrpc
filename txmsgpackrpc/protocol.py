@@ -4,6 +4,8 @@
 # https://github.com/jakm/txmsgpackrpc
 # Copyright (c) 2015 Jakub Matys
 
+from __future__ import print_function
+
 import msgpack
 from twisted.internet import defer, protocol
 from twisted.protocols import policies
@@ -24,7 +26,7 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
 
     @ivar factory: The L{MsgpackClientFactory} or L{MsgpackServerFactory}  which created this L{Msgpack}.
     """
-    def __init__(self, factory, sendErrors=False, timeout=None, packerEncoding="utf-8", unpackerEncoding=None):
+    def __init__(self, factory, sendErrors=False, timeout=None, packerEncoding="utf-8", unpackerEncoding="utf-8"):
         """
         @param factory: factory which created this protocol.
         @type factory: C{protocol.Factory}.
@@ -152,7 +154,7 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
     def responseReceived(self, message):
         try:
             (msgType, msgid, error, result) = message
-        except Exception, e:
+        except Exception as e:
             if self._sendErrors:
                 raise
             raise InvalidResponse("Failed to unpack response: %s" % e)
@@ -211,17 +213,17 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
 
         try:
             (msgType, methodName, params) = message
-        except Exception, e:
+        except Exception as e:
             # Log the error - there's no way to return it for a notification
-            print e
+            print(e)
             return
 
         try:
             result = defer.maybeDeferred(self.callRemoteMethod, msgid, methodName, params)
             result.addBoth(self.notificationCallback)
-        except Exception, e:
+        except Exception as e:
             # Log the error - there's no way to return it for a notification
-            print e
+            print(e)
             return
 
         return None
@@ -241,19 +243,19 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
             func(d)
 
     def connectionMade(self):
-        # print "connectionMade"
+        # print("connectionMade")
         self.connected = 1
         self.factory.addConnection(self)
 
     def connectionLost(self, reason=protocol.connectionDone):
-        # print "connectionLost"
+        # print("connectionLost")
         self.connected = 0
         self.factory.delConnection(self)
 
         self.callbackOutgoingRequests(lambda d: d.errback(reason))
 
     def timeoutConnection(self):
-        # print "timeoutConnection"
+        # print("timeoutConnection")
         self.callbackOutgoingRequests(lambda d: d.errback(TimeoutError("Request timed out")))
 
         policies.TimeoutMixin.timeoutConnection(self)

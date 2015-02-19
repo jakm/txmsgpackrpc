@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from twisted.internet import defer, reactor
 
 @defer.inlineCallbacks
@@ -37,7 +39,7 @@ def main():
         res = yield c.createRequest('echo', data)
 
         assert data == res
-        print res
+        print(res)
 
     except Exception:
         import traceback

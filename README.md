@@ -18,15 +18,19 @@ Features
 - modular object model
 - working timeouts and reconnecting
 - connection pool support
+- TCP and UNIX sockets
 
+Python 3 note
+-------------
+
+Twisted (actually 15.0) doesn't support twisted.internet.unix module
+for Python 3, therefore UNIX sockets are not supported.
 
 Dependencies
 ------------
 
 - msgpack-python <https://pypi.python.org/pypi/msgpack-python/>
 - Twisted        <http://twistedmatrix.com/trac/>
-- zope.interface <https://pypi.python.org/pypi/zope.interface#download>
-
 
 Installation
 ------------
