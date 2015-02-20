@@ -1,3 +1,10 @@
+txmsgpackrpc (0.3) unstable; urgency=low
+
+  * Python3 support
+  * Prepared to deploy to pypi.python.org
+
+ -- Jakub Matys <jakub.matys@nodus.cz>  Fri, 20 Feb 2015 01:55:11 +0100
+
 txmsgpackrpc (0.2) unstable; urgency=low
 
   * MsgpackRPCServer has propery with factory object
