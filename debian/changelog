@@ -1,3 +1,10 @@
+txmsgpackrpc (0.4) unstable; urgency=low
+
+  * Readme updated
+  * Added example of PI computation
+
+ -- Jakub Matys <jakub.matys@nodus.cz>  Fri, 20 Feb 2015 10:55:22 +0100
+
 txmsgpackrpc (0.3) unstable; urgency=low
 
   * Python3 support
