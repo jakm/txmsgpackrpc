@@ -36,9 +36,11 @@ Installation
 ------------
 
 ```sh
-% python setup.py install
+% pip install txmsgpackrpc
 ```
 
+Debian packages are available on project's
+[Releases page](https://github.com/jakm/txmsgpackrpc/releases/latest).
 
 Example
 -------
