@@ -10,13 +10,13 @@ from twisted.test import proto_helpers
 from twisted.internet import defer
 from twisted.internet import protocol
 
-from txmsgpackrpc.protocol import Msgpack
+from txmsgpackrpc.protocol import MsgpackStreamProtocol
 from txmsgpackrpc.protocol import MSGTYPE_REQUEST
 from txmsgpackrpc.protocol import MSGTYPE_RESPONSE
 from txmsgpackrpc.protocol import MSGTYPE_NOTIFICATION
 
 
-class Echo(Msgpack):
+class Echo(MsgpackStreamProtocol):
     def remote_insert_key(self, value, msgid=None):
         value["new_key"]=1
         return self.remote_echo(value, msgid)

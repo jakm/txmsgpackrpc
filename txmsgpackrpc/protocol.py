@@ -20,37 +20,37 @@ MSGTYPE_RESPONSE=1
 MSGTYPE_NOTIFICATION=2
 
 
-class Msgpack(protocol.Protocol, policies.TimeoutMixin):
+class MsgpackBaseProtocol(object):
     """
-    msgpack rpc client/server protocol
-
-    @ivar factory: The L{MsgpackClientFactory} or L{MsgpackServerFactory}  which created this L{Msgpack}.
+    msgpack rpc client/server protocol - base implementation
     """
-    def __init__(self, factory, sendErrors=False, timeout=None, packerEncoding="utf-8", unpackerEncoding="utf-8"):
+    def __init__(self, sendErrors=False, packerEncoding="utf-8", unpackerEncoding="utf-8"):
         """
-        @param factory: factory which created this protocol.
-        @type factory: C{protocol.Factory}.
         @param sendErrors: forward any uncaught Exception details to remote peer.
         @type sendErrors: C{bool}.
-        @param timeout: idle timeout in seconds before connection will be closed.
-        @type timeout: C{int}
         @param packerEncoding: encoding used to encode Python str and unicode. Default is 'utf-8'.
         @type packerEncoding: C{str}
         @param unpackerEncoding: encoding used for decoding msgpack bytes. If None (default), msgpack bytes are deserialized to Python bytes.
         @type unpackerEncoding: C{str}.
         """
-        self.factory = factory
         self._sendErrors = sendErrors
         self._incoming_requests = {}
         self._outgoing_requests = {}
         self._next_msgid = 0
         self._packer = msgpack.Packer(encoding=packerEncoding)
         self._unpacker = msgpack.Unpacker(encoding=unpackerEncoding, unicode_errors='strict')
-        self.setTimeout(timeout)
-        self.connected = 0
+
+    def isConnected(self):
+        raise NotImplementedError('Must be implemented in descendant')
+
+    def writeToTransport(self, message):
+        raise NotImplementedError('Must be implemented in descendant')
+
+    def getRemoteMethod(self, protocol, methodName):
+        raise NotImplementedError('Must be implemented in descendant')
 
     def createRequest(self, method, params):
-        if not self.connected:
+        if not self.isConnected():
             raise ConnectionError("Not connected")
         msgid = self.getNextMsgid()
         message = (MSGTYPE_REQUEST, msgid, method, params)
@@ -61,7 +61,7 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
         return df
 
     def createNotification(self, method, params):
-        if not self.connected:
+        if not self.isConnected():
             raise ConnectionError("Not connected")
         if not type(params) in (list, tuple):
             params = (params,)
@@ -72,9 +72,7 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
         self._next_msgid += 1
         return self._next_msgid
 
-    def dataReceived(self, data):
-        self.resetTimeout()
-
+    def dataReceived2(self, data):
         self._unpacker.feed(data)
         for message in self._unpacker:
             self.messageReceived(message)
@@ -117,7 +115,7 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
 
     def callRemoteMethod(self, msgid, methodName, params):
         try:
-            method = self.factory.getRemoteMethod(self, methodName)
+            method = self.getRemoteMethod(self, methodName)
         except Exception:
             if self._sendErrors:
                 raise
@@ -204,8 +202,7 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
                 raise
             raise ConnectionError("ERROR: Failed to write message: %s" % message)
 
-        # transport.write returns None
-        self.transport.write(message)
+        self.writeToTransport(message)
 
     def notificationReceived(self, message):
         # Notifications don't expect a return value, so they don't supply a msgid
@@ -242,6 +239,50 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
             msgid, d = self._outgoing_requests.popitem()
             func(d)
 
+
+class MsgpackStreamProtocol(protocol.Protocol, policies.TimeoutMixin, MsgpackBaseProtocol):
+    """
+    msgpack rpc client/server protocol
+
+    @ivar factory: The L{MsgpackClientFactory} or L{MsgpackServerFactory}  which created this L{Msgpack}.
+    """
+    def __init__(self, factory, sendErrors=False, timeout=None, packerEncoding="utf-8", unpackerEncoding="utf-8"):
+        """
+        @param factory: factory which created this protocol.
+        @type factory: C{protocol.Factory}.
+        @param sendErrors: forward any uncaught Exception details to remote peer.
+        @type sendErrors: C{bool}.
+        @param timeout: idle timeout in seconds before connection will be closed.
+        @type timeout: C{int}
+        @param packerEncoding: encoding used to encode Python str and unicode. Default is 'utf-8'.
+        @type packerEncoding: C{str}
+        @param unpackerEncoding: encoding used for decoding msgpack bytes. If None (default), msgpack bytes are deserialized to Python bytes.
+        @type unpackerEncoding: C{str}.
+        """
+        super(MsgpackStreamProtocol, self).__init__(sendErrors, packerEncoding, unpackerEncoding)
+        self.factory = factory
+        self.setTimeout(timeout)
+        self.connected = 0
+
+    # implementation of MsgpackBaseProtocol's abstract methods
+
+    def isConnected(self):
+        return self.connected == 1
+
+    def writeToTransport(self, message):
+        # transport.write returns None
+        self.transport.write(message)
+
+    def getRemoteMethod(self, protocol, methodName):
+        return self.factory.getRemoteMethod(self, methodName)
+
+    # reimplementation of Protocol's methods
+
+    def dataReceived(self, data):
+        self.resetTimeout()
+
+        self.dataReceived2(data)
+
     def connectionMade(self):
         # print("connectionMade")
         self.connected = 1
@@ -264,4 +305,4 @@ class Msgpack(protocol.Protocol, policies.TimeoutMixin):
         self.transport.loseConnection()
 
 
-__all__ = ['Msgpack']
+__all__ = ['MsgpackStreamProtocol']
