@@ -1,3 +1,13 @@
+txmsgpackrpc (0.5) unstable; urgency=low
+
+  * Added SSL support to client functions
+  * Added examples of both server and client that use SSL
+  * Convert Markdown to RST for PYPI service
+  * Readme is formatted in RST instead of Markdown
+  * Readme updated
+
+ -- Jakub Matys <jakub.matys@nodus.cz>  Wed, 25 Feb 2015 00:17:04 +0100
+
 txmsgpackrpc (0.4) unstable; urgency=low
 
   * Readme updated
