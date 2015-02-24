@@ -17,12 +17,8 @@ except OSError as e:
         del os.link
 
 
-try:
-    from pypandoc import convert
-    read_md = lambda f: convert(f, 'rst')
-except ImportError:
-    print("warning: pypandoc module not found, could not convert Markdown to RST")
-    read_md = lambda f: open(f, 'r').read()
+with open("README.rst") as readme:
+    long_description = readme.read()
 
 
 setuptools.setup(
@@ -34,7 +30,7 @@ setuptools.setup(
     url = "https://github.com/jakm/txmsgpackrpc",
     license = "MIT",
     description = "txmsgpackrpc is a Twisted library to support msgpack-rpc",
-    long_description=read_md('README.md'),
+    long_description=long_description,
     install_requires = [
         "Twisted>=14.0",
         "msgpack-python>=0.4",
