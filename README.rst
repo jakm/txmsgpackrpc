@@ -17,7 +17,7 @@ Features
 -  modular object model
 -  working timeouts and reconnecting
 -  connection pool support
--  TCP and UNIX sockets
+-  TCP, SSL and UNIX sockets
 
 Python 3 note
 -------------
