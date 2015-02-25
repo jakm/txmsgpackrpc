@@ -6,11 +6,12 @@
 
 from __future__ import print_function
 
+import logging
 import msgpack
 from collections import defaultdict, deque, namedtuple
 from twisted.internet import defer, protocol
 from twisted.protocols import policies
-from twisted.python import failure
+from twisted.python import failure, log
 
 from txmsgpackrpc.error import (ConnectionError, ResponseError, InvalidRequest,
                                 InvalidResponse, InvalidData, TimeoutError,
@@ -87,8 +88,8 @@ class MsgpackBaseProtocol(object):
             self._unpacker.feed(data)
             for message in self._unpacker:
                 self.messageReceived(message, context)
-        except Exception as e:
-            print(e)
+        except Exception:
+            log.err()
 
     def messageReceived(self, message, context):
         if message[0] == MSGTYPE_REQUEST:
@@ -151,8 +152,6 @@ class MsgpackBaseProtocol(object):
             else:
                 result = method(*params)
         except TypeError:
-            import traceback
-            traceback.print_exc()
             if self._sendErrors:
                 raise
             raise InvalidRequest("Wrong number of arguments for %s" % methodName)
@@ -235,18 +234,16 @@ class MsgpackBaseProtocol(object):
 
         try:
             (msgType, methodName, params) = message
-        except Exception as e:
+        except Exception:
             # Log the error - there's no way to return it for a notification
-            print(e)
-            return
+            log.err()
 
         try:
             result = defer.maybeDeferred(self.callRemoteMethod, msgid, methodName, params)
             result.addBoth(self.notificationCallback)
-        except Exception as e:
+        except Exception:
             # Log the error - there's no way to return it for a notification
-            print(e)
-            return
+            log.err()
 
         return None
 
@@ -308,19 +305,19 @@ class MsgpackStreamProtocol(protocol.Protocol, policies.TimeoutMixin, MsgpackBas
         self.rawDataReceived(data)
 
     def connectionMade(self):
-        # print("connectionMade")
+        # log.msg("connectionMade", logLevel=logging.DEBUG)
         self.connected = 1
         self.factory.addConnection(self)
 
     def connectionLost(self, reason=protocol.connectionDone):
-        # print("connectionLost")
+        # log.msg("connectionLost", logLevel=logging.DEBUG)
         self.connected = 0
         self.factory.delConnection(self)
 
         self.callbackOutgoingRequests(lambda d: d.errback(reason))
 
     def timeoutConnection(self):
-        # print("timeoutConnection")
+        # log.msg("timeoutConnection", logLevel=logging.DEBUG)
         self.callbackOutgoingRequests(lambda d: d.errback(TimeoutError("Request timed out")))
 
         policies.TimeoutMixin.timeoutConnection(self)
@@ -394,16 +391,16 @@ class MsgpackDatagramProtocol(protocol.DatagramProtocol, MsgpackBaseProtocol):
     # Possibly invoked if there is no server listening on the
     # address to which we are sending.
     def connectionRefused(self):
-        # print("Connection refused")
+        # log.msg("Connection refused", logLevel=logging.DEBUG)
         self.callbackOutgoingRequests(lambda d: d.errback(ConnectionError("Connection refused")))
 
     def timeoutRequest(self, msgid):
-        # print("timeoutRequest")
+        # log.msg("timeoutRequest", logLevel=logging.DEBUG)
         try:
             d = self._outgoing_requests.pop(msgid)
             d.errback(TimeoutError("Request timed out"))
         except KeyError:
-            pass
+            log.err("Expired timeout of nonexisting outgoing request %d" % msgid)
 
     def closeConnection(self):
         self.connected = 0
@@ -450,12 +447,12 @@ class MsgpackMulticastDatagramProtocol(MsgpackDatagramProtocol, MsgpackBaseProto
             self._multicast_results[msgid].append(result)
 
     def timeoutRequest(self, msgid):
-        # print("timeoutRequest")
+        # log.msg("timeoutRequest", logLevel=logging.DEBUG)
         try:
             try:
                 d = self._outgoing_requests.pop(msgid)
             except KeyError:
-                # log
+                log.err("Expired timeout of nonexisting outgoing request %d" % msgid)
                 return
 
             results = self._multicast_results.get(msgid)

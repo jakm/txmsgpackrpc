@@ -125,7 +125,7 @@ class PooledConnectionHandler(object):
         try:
             self.pool.remove(connection)
         except Exception as e:
-            log.msg("Could not remove connection from pool: %s" % str(e))
+            log.err("Cannot remove connection from pool: %s" % str(e))
 
         self.size = len(self.pool)
 
