@@ -5,6 +5,11 @@ from txmsgpackrpc.error import ConnectionError
 
 
 class SimpleConnectionHandler(object):
+    """
+    Connection handler that handles connections established by reconnecting
+    factory. If connection is not established user requests and notifications
+    wait until new connection is made or error is detected.
+    """
     def __init__(self, factory):
         self.factory = factory
         self.connection = None
@@ -19,11 +24,45 @@ class SimpleConnectionHandler(object):
             return d
 
     def createRequest(self, method, *params):
+        """
+        Create new RPC request. If connection is not established, request will
+        be deferred until new connection is made or error is detected.
+
+        Possible exceptions:
+        * C{error.ConnectionError}: all connection attempts failed
+        * C{error.ResponseError}: remote method returned error value
+        * C{error.TimeoutError}: waitTimeout expired during request processing
+        * C{t.i.e.ConnectionClosed}: connection closed during request processing
+
+        @param method: RPC method name
+        @type method: C{str}
+        @param params: RPC method parameters
+        @type params: C{tuple}
+        @return Returns Deferred that callbacks with result of RPC method or
+            errbacks with C{error.MsgpackError}.
+        @rtype C{t.i.d.Deferred}
+        """
         d = self.getConnection()
         d.addCallback(lambda conn: conn.createRequest(method, params))
         return d
 
     def createNotification(self, method, params):
+        """
+        Create new RPC notification. If connection is not established, request
+        will be deferred until new connection is made or error is detected.
+
+        Possible exceptions:
+        * C{error.ConnectionError}: all connection attempts failed
+        * C{t.i.e.ConnectionClosed}: connection closed during request processing
+
+        @param method: RPC method name
+        @type method: C{str}
+        @param params: RPC method parameters
+        @type params: C{tuple}
+        @return Returns Deferred that callbacks with result of RPC method or
+            errbacks with C{error.MsgpackError}.
+        @rtype C{t.i.d.Deferred}
+        """
         d = self.getConnection()
         d.addCallback(lambda conn: conn.createNotification(method, params))
         return d
@@ -63,6 +102,11 @@ class SimpleConnectionHandler(object):
 
 
 class PooledConnectionHandler(object):
+    """
+    Connection handler that handles connections in pool that are established by
+    reconnecting factory. If connection is not established user requests and
+    notifications wait until new connection is made or error is detected.
+    """
     def __init__(self, factory, poolsize=10, isolated=False):
         self.factory = factory
         self.poolsize = poolsize
@@ -109,9 +153,45 @@ class PooledConnectionHandler(object):
         return d
 
     def createRequest(self, method, *params):
+        """
+        Create new RPC request. If there is no established connection in the
+        pool, request will be deferred until new connection is made or error is
+        detected.
+
+        Possible exceptions:
+        * C{error.ConnectionError}: all connection attempts failed
+        * C{error.ResponseError}: remote method returned error value
+        * C{error.TimeoutError}: waitTimeout expired during request processing
+        * C{t.i.e.ConnectionClosed}: connection closed during request processing
+
+        @param method: RPC method name
+        @type method: C{str}
+        @param params: RPC method parameters
+        @type params: C{tuple}
+        @return Returns Deferred that callbacks with result of RPC method or
+            errbacks with C{error.MsgpackError}.
+        @rtype C{t.i.d.Deferred}
+        """
         return self._send('createRequest', method, params)
 
     def createNotification(self, method, params):
+        """
+        Create new RPC notification. If there is no established connection in
+        the pool, request will be deferred until new connection is made or error
+        is detected.
+
+        Possible exceptions:
+        * C{error.ConnectionError}: all connection attempts failed
+        * C{t.i.e.ConnectionClosed}: connection closed during request processing
+
+        @param method: RPC method name
+        @type method: C{str}
+        @param params: RPC method parameters
+        @type params: C{tuple}
+        @return Returns Deferred that callbacks with result of RPC method or
+            errbacks with C{error.MsgpackError}.
+        @rtype C{t.i.d.Deferred}
+        """
         return self._send('createNotification', method, params)
 
     def addConnection(self, connection):

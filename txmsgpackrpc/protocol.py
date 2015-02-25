@@ -36,7 +36,7 @@ class MsgpackBaseProtocol(object):
         @type sendErrors: C{bool}.
         @param packerEncoding: encoding used to encode Python str and unicode. Default is 'utf-8'.
         @type packerEncoding: C{str}
-        @param unpackerEncoding: encoding used for decoding msgpack bytes. If None (default), msgpack bytes are deserialized to Python bytes.
+        @param unpackerEncoding: encoding used for decoding msgpack bytes. Default is 'utf-8'.
         @type unpackerEncoding: C{str}.
         """
         self._sendErrors = sendErrors
@@ -59,6 +59,24 @@ class MsgpackBaseProtocol(object):
         raise NotImplementedError('Must be implemented in descendant')
 
     def createRequest(self, method, params):
+        """
+        Create new RPC request. If protocol is not connected, errback with
+        C{ConnectionError} will be called.
+
+        Possible exceptions:
+        * C{error.ConnectionError}: all connection attempts failed
+        * C{error.ResponseError}: remote method returned error value
+        * C{error.TimeoutError}: waitTimeout expired during request processing
+        * C{t.i.e.ConnectionClosed}: connection closed during request processing
+
+        @param method: RPC method name
+        @type method: C{str}
+        @param params: RPC method parameters
+        @type params: C{tuple} or C{list}
+        @return Returns Deferred that callbacks with result of RPC method or
+            errbacks with C{error.MsgpackError}.
+        @rtype C{t.i.d.Deferred}
+        """
         if not self.isConnected():
             raise ConnectionError("Not connected")
         msgid = self.getNextMsgid()
@@ -71,6 +89,22 @@ class MsgpackBaseProtocol(object):
         return df
 
     def createNotification(self, method, params):
+        """
+        Create new RPC notification. If protocol is not connected, errback with
+        C{ConnectionError} will be called.
+
+        Possible exceptions:
+        * C{error.ConnectionError}: all connection attempts failed
+        * C{t.i.e.ConnectionClosed}: connection closed during request processing
+
+        @param method: RPC method name
+        @type method: C{str}
+        @param params: RPC method parameters
+        @type params: C{tuple} or C{list}
+        @return Returns Deferred that callbacks with result of RPC method or
+            errbacks with C{error.MsgpackError}.
+        @rtype C{t.i.d.Deferred}
+        """
         if not self.isConnected():
             raise ConnectionError("Not connected")
         if not type(params) in (list, tuple):
@@ -200,8 +234,6 @@ class MsgpackBaseProtocol(object):
         return self.writeMessage(response, ctx)
 
     def respondErrback(self, f, msgid):
-        """
-        """
         result = None
         if self._sendErrors:
             error = f.getBriefTraceback()
@@ -278,7 +310,7 @@ class MsgpackStreamProtocol(protocol.Protocol, policies.TimeoutMixin, MsgpackBas
         @type timeout: C{int}
         @param packerEncoding: encoding used to encode Python str and unicode. Default is 'utf-8'.
         @type packerEncoding: C{str}
-        @param unpackerEncoding: encoding used for decoding msgpack bytes. If None (default), msgpack bytes are deserialized to Python bytes.
+        @param unpackerEncoding: encoding used for decoding msgpack bytes. Default is 'utf-8'.
         @type unpackerEncoding: C{str}.
         """
         super(MsgpackStreamProtocol, self).__init__(sendErrors, packerEncoding, unpackerEncoding)
@@ -331,6 +363,20 @@ class MsgpackDatagramProtocol(protocol.DatagramProtocol, MsgpackBaseProtocol):
     msgpack rpc client/server datagram protocol
     """
     def __init__(self, address=None, handler=None, sendErrors=False, timeout=None, packerEncoding="utf-8", unpackerEncoding="utf-8"):
+        """
+        @param address: tuple(host,port) containing address of client where protocol will connect to.
+        @type address: C{tuple}.
+        @param handler: object of RPC server that will process requests and notifications.
+        @type handler: C{server.MsgpackRPCServer}
+        @param sendErrors: forward any uncaught Exception details to remote peer.
+        @type sendErrors: C{bool}.
+        @param timeout: idle timeout in seconds before connection will be closed.
+        @type timeout: C{int}
+        @param packerEncoding: encoding used to encode Python str and unicode. Default is 'utf-8'.
+        @type packerEncoding: C{str}
+        @param unpackerEncoding: encoding used for decoding msgpack bytes. Default is 'utf-8'.
+        @type unpackerEncoding: C{str}.
+        """
         super(MsgpackDatagramProtocol, self).__init__(sendErrors, packerEncoding, unpackerEncoding)
 
         if address:
@@ -359,6 +405,26 @@ class MsgpackDatagramProtocol(protocol.DatagramProtocol, MsgpackBaseProtocol):
         return Context(peer=self.conn_address)
 
     def createRequest(self, method, *params):
+        """
+        Create new RPC request. If protocol is not connected, errback with
+        C{ConnectionError} will be called.
+
+        Possible exceptions:
+        * C{error.ConnectionError}: protocol is not connected with peer
+        * C{error.ResponseError}: remote method returned error value
+        * C{error.TimeoutError}: waitTimeout expired during request processing
+        * C{t.i.e.ConnectionClosed}: connection closed during request processing
+
+        @param method: RPC method name
+        @type method: C{str}
+        @param params: RPC method parameters
+        @type params: C{tuple} or C{list}
+        @return Returns Deferred that callbacks with result of RPC method or
+            errbacks with C{error.MsgpackError}.
+        @rtype C{t.i.d.Deferred}
+        """
+        # this method update interface contract in order to be compatible with
+        # methods defined by connection handlers
         return super(MsgpackDatagramProtocol, self).createRequest(method, params)
 
     def writeMessage(self, message, context):
@@ -412,6 +478,26 @@ class MsgpackMulticastDatagramProtocol(MsgpackDatagramProtocol, MsgpackBaseProto
     msgpack rpc client/server multicast datagram protocol
     """
     def __init__(self, group, ttl, port=None, timeout=30, handler=None, sendErrors=False, packerEncoding="utf-8", unpackerEncoding="utf-8"):
+        """
+        @param group: IP of multicast group that will be joined.
+        @type group: C{str}.
+        @param ttl: time to live of multicast packets.
+        @type ttl: C{int}.
+        @param port: port where client will send packets.
+        @type port: C{int}.
+        @param timeout: timeout of client's requests. Protocol always wait for responses until timeout expires. Default is 30 seconds.
+        @type timeout: C{int}.
+        @param handler: object of RPC server that will process requests and notifications.
+        @type handler: C{server.MsgpackRPCServer}
+        @param sendErrors: forward any uncaught Exception details to remote peer.
+        @type sendErrors: C{bool}.
+        @param timeout: idle timeout in seconds before connection will be closed.
+        @type timeout: C{int}
+        @param packerEncoding: encoding used to encode Python str and unicode. Default is 'utf-8'.
+        @type packerEncoding: C{str}
+        @param unpackerEncoding: encoding used for decoding msgpack bytes. Default is 'utf-8'.
+        @type unpackerEncoding: C{str}.
+        """
         super(MsgpackMulticastDatagramProtocol, self).__init__(handler=handler, timeout=timeout, sendErrors=sendErrors,
             packerEncoding=packerEncoding, unpackerEncoding=unpackerEncoding)
 
