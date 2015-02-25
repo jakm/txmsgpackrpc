@@ -1,3 +1,18 @@
+txmsgpackrpc (1.0) unstable; urgency=low
+
+  * Class Msgpack split to MsgpackBaseProtocol and MsgpackStreamProtocol
+  * Added MsgpackDatagramProtocol, client function for UDP and examples
+  * Readme updated
+  * Changed MsgpackRPCServer's API to get factory and datagram protocol
+  * Added support of multicast UDP
+  * Multicast protocol handles properly multiple responses
+  * Better results checking in multicast UDP example
+  * Added multicast UDP example to readme
+  * Logging improved
+  * Added documentation of "public" classes, methods and functions
+
+ -- Jakub Matys <jakub.matys@nodus.cz>  Wed, 25 Feb 2015 18:08:24 +0100
+
 txmsgpackrpc (0.5) unstable; urgency=low
 
   * Added SSL support to client functions
