@@ -13,7 +13,7 @@ class EchoRPC(MsgpackRPCServer):
 
 def main():
     server = EchoRPC()
-    reactor.listenUDP(8000, server.datagram_protocol)
+    reactor.listenUDP(8000, server.getDatagramProtocol())
 
 if __name__ == '__main__':
     reactor.callWhenRunning(main)

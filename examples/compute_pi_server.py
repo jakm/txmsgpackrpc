@@ -162,7 +162,7 @@ class ComputePI(MsgpackRPCServer):
 
 def main():
     server = ComputePI()
-    reactor.listenTCP(8000, server.factory)
+    reactor.listenTCP(8000, server.getStreamFactory())
 
 if __name__ == '__main__':
     reactor.callWhenRunning(main)

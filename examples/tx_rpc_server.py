@@ -13,7 +13,7 @@ class EchoRPC(MsgpackRPCServer):
 
 def main():
     server = EchoRPC()
-    reactor.listenTCP(8000, server.factory)
+    reactor.listenTCP(8000, server.getStreamFactory())
 
 if __name__ == '__main__':
     reactor.callWhenRunning(main)
