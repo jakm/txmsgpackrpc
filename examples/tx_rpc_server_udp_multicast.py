@@ -13,7 +13,8 @@ class EchoRPC(MsgpackRPCServer):
 
 def main():
     server = EchoRPC()
-    reactor.listenTCP(8000, server.getStreamFactory())
+    reactor.listenMulticast(8000, server.getMulticastProtocol('228.0.0.5', ttl=5),
+                            listenMultiple=True)
 
 if __name__ == '__main__':
     reactor.callWhenRunning(main)

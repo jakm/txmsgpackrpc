@@ -2,12 +2,12 @@ from __future__ import print_function
 
 from twisted.internet import protocol
 
-from txmsgpackrpc.protocol import Msgpack
+from txmsgpackrpc.protocol import MsgpackStreamProtocol
 from txmsgpackrpc.handler  import SimpleConnectionHandler
 
 
 class MsgpackServerFactory(protocol.Factory):
-    protocol = Msgpack
+    protocol = MsgpackStreamProtocol
 
     def __init__(self, handler):
         self.handler = handler
@@ -29,7 +29,7 @@ class MsgpackServerFactory(protocol.Factory):
 
 class MsgpackClientFactory(protocol.ReconnectingClientFactory):
     maxDelay = 12
-    protocol = Msgpack
+    protocol = MsgpackStreamProtocol
 
     def __init__(self, handler=SimpleConnectionHandler, connectTimeout=None, waitTimeout=None, handlerConfig={}):
         self.connectTimeout = connectTimeout

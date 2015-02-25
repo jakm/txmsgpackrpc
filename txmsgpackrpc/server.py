@@ -1,16 +1,17 @@
 from txmsgpackrpc.factory  import MsgpackServerFactory
+from txmsgpackrpc.protocol import MsgpackDatagramProtocol, MsgpackMulticastDatagramProtocol
 
 
 class MsgpackRPCServer(object):
 
-    __factory_class = MsgpackServerFactory
-    __factory = None
+    def getStreamFactory(self, factory_class=MsgpackServerFactory):
+        return factory_class(self)
 
-    @property
-    def factory(self):
-        if not self.__factory:
-            self.__factory = self.__factory_class(self)
-        return self.__factory
+    def getDatagramProtocol(self, protocol_class=MsgpackDatagramProtocol):
+        return protocol_class(handler=self)
+
+    def getMulticastProtocol(self, group, ttl=1, protocol_class=MsgpackMulticastDatagramProtocol):
+        return protocol_class(group, ttl, handler=self)
 
 
 __all__ = ['MsgpackRPCServer']

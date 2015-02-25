@@ -15,7 +15,7 @@ def main():
                     'examples/cert/example.key',
                     'examples/cert/example.cert')
 
-    reactor.listenSSL(8000, server.factory, sslContext)
+    reactor.listenSSL(8000, server.getStreamFactory(), sslContext)
 
 if __name__ == '__main__':
     reactor.callWhenRunning(main)

@@ -24,3 +24,7 @@ class InvalidData(MsgpackError):
 
 class TimeoutError(MsgpackError):
     pass
+
+
+class SerializationError(MsgpackError):
+    pass

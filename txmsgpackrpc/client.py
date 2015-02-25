@@ -1,9 +1,10 @@
 import sys
 
-from twisted.internet import reactor
+from twisted.internet import defer, reactor
 
-from txmsgpackrpc.factory import MsgpackClientFactory
-from txmsgpackrpc.handler import PooledConnectionHandler
+from txmsgpackrpc.factory  import MsgpackClientFactory
+from txmsgpackrpc.handler  import PooledConnectionHandler
+from txmsgpackrpc.protocol import MsgpackDatagramProtocol, MsgpackMulticastDatagramProtocol
 
 
 def __connect(host, port, factory, connectTimeout, ssl, ssl_CertificateOptions):
@@ -48,6 +49,24 @@ def connect_pool(host, port, poolsize=10, isolated=False,
 
     return d
 
+
+def connect_UDP(host, port, waitTimeout=None):
+    protocol = MsgpackDatagramProtocol(address=(host, port), timeout=waitTimeout)
+
+    reactor.listenUDP(0, protocol)
+
+    return defer.succeed(protocol)
+
+
+def connect_multicast(group, port, ttl=1, waitTimeout=None):
+    protocol = MsgpackMulticastDatagramProtocol(group, ttl, port, timeout=waitTimeout)
+
+    reactor.listenMulticast(0, protocol, listenMultiple=True)
+
+    return defer.succeed(protocol)
+
+
+
 if sys.version_info.major < 3:  # UNIX sockets are not supported for Python 3
 
     def connect_UNIX(address, connectTimeout=None, waitTimeout=None, maxRetries=5):
@@ -62,6 +81,6 @@ if sys.version_info.major < 3:  # UNIX sockets are not supported for Python 3
 
         return d
 
-    __all__ = ['connect', 'connect_pool', 'connect_UNIX']
+    __all__ = ['connect', 'connect_pool', 'connect_UDP', 'connect_multicast', 'connect_UNIX']
 else:
-    __all__ = ['connect', 'connect_pool']
+    __all__ = ['connect', 'connect_pool', 'connect_UDP', 'connect_multicast']

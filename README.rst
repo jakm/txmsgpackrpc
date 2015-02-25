@@ -17,7 +17,7 @@ Features
 -  modular object model
 -  working timeouts and reconnecting
 -  connection pool support
--  TCP, SSL and UNIX sockets
+-  TCP, SSL, UDP and UNIX sockets
 
 Python 3 note
 -------------
@@ -41,8 +41,8 @@ Installation
 Debian packages are available on project's `Releases
 page <https://github.com/jakm/txmsgpackrpc/releases/latest>`__.
 
-Example
--------
+TCP example
+-----------
 
 Computation of PI using Chudnovsky algorithm in subprocess. For details,
 see http://www.craig-wood.com/nick/articles/pi-chudnovsky/.
@@ -247,7 +247,7 @@ Server
 
     def main():
         server = ComputePI()
-        reactor.listenTCP(8000, server.factory)
+        reactor.listenTCP(8000, server.getStreamFactory())
 
     if __name__ == '__main__':
         reactor.callWhenRunning(main)
@@ -305,3 +305,132 @@ Client
         reactor.callWhenRunning(main)
         reactor.run()
 
+Multicast UDP example
+---------------------
+
+Example servers join to group 224.0.0.5 and listen on port 8000. Their only
+method ``echo`` returns its parameter.
+
+Client joins group to 224.0.0.5, sends multicast request to group on port 8000
+and waits for 5 seconds for responses. If some responses are received,
+protocol callbacks with tuple of results and individual parts are checked for
+errors. If no responses are received, protocol errbacks with TimeoutError.
+
+Because there is no common way to determine number of peers in group,
+MsgpackMulticastDatagramProtocol always wait for responses until waitTimeout
+expires.
+
+.. code:: sh
+
+    $ # setup multicast routing
+    $ ip route add 224.0.0.0/4 dev eth0
+    $ echo 1 > /proc/sys/net/ipv4/ip_forward
+    $
+    $ # start servers listening on port 8000
+    $ python examples/tx_rpc_server_udp_multicast.py &
+    [1] 3584
+    $ python examples/tx_rpc_server_udp_multicast.py &
+    [2] 3585
+    $ python examples/tx_rpc_server_udp_multicast.py &
+    [3] 3586
+    $ python examples/tx_rpc_server_udp_multicast.py &
+    [4] 3587
+    $ python examples/tx_rpc_server_udp_multicast.py &
+    [5] 3588
+    $
+    $ # execute client
+    $ python examples/tx_rpc_client_udp_multicast.py
+    Received results from 5 peers
+    $
+
+Server
+~~~~~~
+
+.. code:: python
+
+    from twisted.internet import defer, reactor, task
+    from txmsgpackrpc.server import MsgpackRPCServer
+
+
+    class EchoRPC(MsgpackRPCServer):
+
+        @defer.inlineCallbacks
+        def remote_echo(self, value, delay=None, msgid=None):
+            if delay is not None:
+                yield task.deferLater(reactor, delay, lambda: None)
+            defer.returnValue(value)
+
+
+    def main():
+        server = EchoRPC()
+        reactor.listenMulticast(8000, server.getMulticastProtocol('228.0.0.5', ttl=5),
+                                listenMultiple=True)
+
+    if __name__ == '__main__':
+        reactor.callWhenRunning(main)
+        reactor.run()
+
+
+Client
+~~~~~~
+
+.. code:: python
+
+    from __future__ import print_function
+
+    from twisted.internet import defer, reactor
+
+    @defer.inlineCallbacks
+    def main():
+        try:
+
+            from txmsgpackrpc.client import connect_multicast
+
+            c = yield connect_multicast('228.0.0.5', 8000, ttl=5, waitTimeout=5)
+
+            data = {
+                        'firstName': 'John',
+                        'lastName': 'Smith',
+                        'isAlive': True,
+                        'age': 25,
+                        'height_cm': 167.6,
+                        'address': {
+                          'streetAddress': "21 2nd Street",
+                          "city": 'New York',
+                          "state": 'NY',
+                          'postalCode': '10021-3100'
+                        },
+                        'phoneNumbers': [
+                          {
+                            'type': 'home',
+                            'number': '212 555-1234'
+                          },
+                          {
+                            'type': 'office',
+                            'number': '646 555-4567'
+                          }
+                        ],
+                        'children': [],
+                        'spouse': None
+                      }
+
+            results = yield c.createRequest('echo', data)
+
+            assert isinstance(results, tuple)
+
+            print('Received results from %d peers' % len(results))
+
+            for i, result in enumerate(results):
+                if result != data:
+                    print('Result %d mismatch' % i)
+                    print(result)
+
+        except Exception:
+            import traceback
+            traceback.print_exc()
+        finally:
+            reactor.stop()
+
+    if __name__ == '__main__':
+        reactor.callWhenRunning(main)
+        reactor.run()
