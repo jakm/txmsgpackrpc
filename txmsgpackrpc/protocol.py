@@ -178,8 +178,7 @@ class MsgpackBaseProtocol(object):
             # There's nowhere to send this error, except the log
             # if self._sendErrors:
             #     raise
-            # raise InvalidResponse("Failed to find dispatched request with msgid %s to match incoming repsonse" % msgid)
-            pass
+            raise InvalidResponse("Failed to find dispatched request with msgid %s to match incoming repsonse" % msgid)
 
         if error is not None:
             # The remote host returned an error, so we need to create a Failure
@@ -406,6 +405,28 @@ class MsgpackDatagramProtocol(protocol.DatagramProtocol, MsgpackBaseProtocol):
     def closeConnection(self):
         self.connected = 0
         self.transport.stopListening()
+
+
+class MsgpackMulticastDatagramProtocol(MsgpackDatagramProtocol, MsgpackBaseProtocol):
+    """
+    msgpack rpc client/server multicast datagram protocol
+    """
+    def __init__(self, group, ttl, port=None, handler=None, sendErrors=False, timeout=None, packerEncoding="utf-8", unpackerEncoding="utf-8"):
+        super(MsgpackMulticastDatagramProtocol, self).__init__(handler=handler,
+            sendErrors=sendErrors, packerEncoding=packerEncoding,
+            unpackerEncoding=unpackerEncoding)
+
+        self.group = group
+        self.ttl = ttl
+        self.port = port
+
+    def getClientContext(self):
+        return Context(peer=(self.group, self.port))
+
+    def startProtocol(self):
+        self.transport.setTTL(self.ttl)
+        self.transport.joinGroup(self.group)
+        self.connected = 1
 
 
 __all__ = ['MsgpackStreamProtocol', 'MsgpackDatagramProtocol']
