@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+from pprint import pprint
 from twisted.internet import defer, reactor
 
 @defer.inlineCallbacks
@@ -38,8 +39,12 @@ def main():
 
         res = yield c.createRequest('echo', data)
 
-        assert data == res
-        print(res)
+        assert isinstance(res, tuple)
+        for i, r in enumerate(res):
+            if r != data:
+                print('Result %d mismatch' % i)
+
+        pprint(res)
 
     except Exception:
         import traceback

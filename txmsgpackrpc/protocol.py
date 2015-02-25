@@ -7,7 +7,7 @@
 from __future__ import print_function
 
 import msgpack
-from collections import namedtuple
+from collections import defaultdict, deque, namedtuple
 from twisted.internet import defer, protocol
 from twisted.protocols import policies
 from twisted.python import failure
@@ -175,10 +175,11 @@ class MsgpackBaseProtocol(object):
         try:
             df = self._outgoing_requests.pop(msgid)
         except KeyError:
-            # There's nowhere to send this error, except the log
+            # Response can be delivered after timeout, code below is for debugging
             # if self._sendErrors:
             #     raise
-            raise InvalidResponse("Failed to find dispatched request with msgid %s to match incoming repsonse" % msgid)
+            # raise InvalidResponse("Failed to find dispatched request with msgid %s to match incoming repsonse" % msgid)
+            return
 
         if error is not None:
             # The remote host returned an error, so we need to create a Failure
@@ -398,9 +399,11 @@ class MsgpackDatagramProtocol(protocol.DatagramProtocol, MsgpackBaseProtocol):
 
     def timeoutRequest(self, msgid):
         # print("timeoutRequest")
-        d = self._outgoing_requests.get(msgid)
-        if d is not None:
+        try:
+            d = self._outgoing_requests.pop(msgid)
             d.errback(TimeoutError("Request timed out"))
+        except KeyError:
+            pass
 
     def closeConnection(self):
         self.connected = 0
@@ -411,17 +414,59 @@ class MsgpackMulticastDatagramProtocol(MsgpackDatagramProtocol, MsgpackBaseProto
     """
     msgpack rpc client/server multicast datagram protocol
     """
-    def __init__(self, group, ttl, port=None, handler=None, sendErrors=False, timeout=None, packerEncoding="utf-8", unpackerEncoding="utf-8"):
-        super(MsgpackMulticastDatagramProtocol, self).__init__(handler=handler,
-            sendErrors=sendErrors, packerEncoding=packerEncoding,
-            unpackerEncoding=unpackerEncoding)
+    def __init__(self, group, ttl, port=None, timeout=30, handler=None, sendErrors=False, packerEncoding="utf-8", unpackerEncoding="utf-8"):
+        super(MsgpackMulticastDatagramProtocol, self).__init__(handler=handler, timeout=timeout, sendErrors=sendErrors,
+            packerEncoding=packerEncoding, unpackerEncoding=unpackerEncoding)
 
         self.group = group
         self.ttl = ttl
         self.port = port
 
+        self._multicast_results = defaultdict(deque)
+
     def getClientContext(self):
         return Context(peer=(self.group, self.port))
+
+    def responseReceived(self, message):
+        try:
+            (msgType, msgid, error, result) = message
+        except Exception as e:
+            if self._sendErrors:
+                raise
+            raise InvalidResponse("Failed to unpack response: %s" % e)
+
+        if msgid not in self._outgoing_requests:
+            # Response can be delivered after timeout, code below is for debugging
+            # raise InvalidResponse("Failed to find dispatched request with msgid %s to match incoming repsonse" % msgid)
+            return
+
+        if error is not None:
+            # The remote host returned an error, so we need to create a Failure
+            # object to pass into the errback chain. The Failure object in turn
+            # requires an Exception
+            ex = ResponseError(error)
+            self._multicast_results[msgid].append(failure.Failure(exc_value=ex))
+        else:
+            self._multicast_results[msgid].append(result)
+
+    def timeoutRequest(self, msgid):
+        # print("timeoutRequest")
+        try:
+            try:
+                d = self._outgoing_requests.pop(msgid)
+            except KeyError:
+                # log
+                return
+
+            results = self._multicast_results.get(msgid)
+
+            if results is not None and len(results) > 0:
+                d.callback(tuple(results))
+            else:
+                d.errback(TimeoutError("Request timed out"))
+        finally:
+            if msgid in self._multicast_results:
+                del self._multicast_results[msgid]
 
     def startProtocol(self):
         self.transport.setTTL(self.ttl)
@@ -429,4 +474,4 @@ class MsgpackMulticastDatagramProtocol(MsgpackDatagramProtocol, MsgpackBaseProto
         self.connected = 1
 
 
-__all__ = ['MsgpackStreamProtocol', 'MsgpackDatagramProtocol']
+__all__ = ['MsgpackStreamProtocol', 'MsgpackDatagramProtocol', 'MsgpackMulticastDatagramProtocol']
