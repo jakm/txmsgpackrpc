@@ -1,6 +1,7 @@
 from txmsgpackrpc.factory  import MsgpackServerFactory
 from txmsgpackrpc.protocol import MsgpackDatagramProtocol, MsgpackMulticastDatagramProtocol
 
+from txmsgpackrpc.error import (ConnectionError)
 
 class MsgpackRPCServer(object):
     """
@@ -11,7 +12,6 @@ class MsgpackRPCServer(object):
     be passed to reactor's listen* methods. Generated objects are binded with
     server.
     """
-
     def getStreamFactory(self, factory_class=MsgpackServerFactory):
         """
         Generate factory object for TCP, SSL and UNIX sockets.
@@ -50,4 +50,48 @@ class MsgpackRPCServer(object):
         return protocol_class(group, ttl, handler=self)
 
 
-__all__ = ['MsgpackRPCServer']
+class MsgpackRPCPubServer(MsgpackRPCServer):
+    """
+    msgpack-rpc publishing server. This server adds publish/subscribe support to
+    the base server class.
+    """
+    def __init__(self):
+        self._topics= {}
+        return
+
+    def remote_subscribe(self, peer, topic):
+        if not topic in self._topics:
+            self._topics[topic] = []
+#       @todo : return error if already subscribed
+        self._topics[topic].append(peer)
+        return 0
+
+    def remote_unsubscribe(self, peer, topic):
+        try:
+            self._topics[topic].remove(peer)
+        except KeyError:
+            return
+
+        return 0
+
+    def Publish(self, topic, params):
+        unsubscribe_peers = []
+        try:
+            for peer in self._topics[topic]:
+                if self._PublishIfConnected(peer, topic, params) == False:
+                    unsubscribe_peers.append(peer)
+        except KeyError:
+            return
+
+        for peer in unsubscribe_peers:
+            self._topics[topic].remove(peer)
+
+    def _PublishIfConnected(self, peer, topic, params):
+        try:
+            peer.createPublish(topic, params)
+        except ConnectionError:
+            return False
+        return True
+
+
+__all__ = ['MsgpackRPCServer', 'MsgpackRPCPubServer']
