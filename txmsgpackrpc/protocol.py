@@ -254,6 +254,7 @@ class MsgpackBaseProtocol(object):
         try:
             message = self._packer.pack(message)
         except Exception:
+            self._packer.reset()
             if self._sendErrors:
                 raise
             raise SerializationError("ERROR: Failed to write message: %s" % message)
