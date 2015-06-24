@@ -1,3 +1,9 @@
+txmsgpackrpc (1.1) unstable; urgency=low
+
+  * Issue #2: reset packer after serialization error
+
+ -- Jakub Matys <jakub.matys@nodus.cz>  Wed, 24 Jun 2015 09:13:52 +0200
+
 txmsgpackrpc (1.0) unstable; urgency=low
 
   * Class Msgpack split to MsgpackBaseProtocol and MsgpackStreamProtocol
