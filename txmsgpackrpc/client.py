@@ -1,5 +1,6 @@
 import sys
 
+import twisted
 from twisted.internet import defer, reactor
 
 from txmsgpackrpc.factory  import MsgpackClientFactory
@@ -161,8 +162,7 @@ def connect_multicast(group, port, ttl=1, waitTimeout=None):
     return defer.succeed(protocol)
 
 
-
-if sys.version_info.major < 3:  # UNIX sockets are not supported for Python 3
+if sys.version_info.major < 3 or twisted.__version__ >= '15.3.0':  # Twisted <15.3.0 doesn't support UNIX sockets for Python 3
 
     def connect_UNIX(address, connectTimeout=None, waitTimeout=None, maxRetries=5):
         """

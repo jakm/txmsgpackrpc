@@ -22,8 +22,7 @@ Features
 Python 3 note
 -------------
 
-Twisted (actually 15.0) doesn't support twisted.internet.unix module for
-Python 3, therefore UNIX sockets are not supported.
+To use UNIX sockets with Python 3 please use Twisted framework 15.3.0 and above.
 
 Dependencies
 ------------
