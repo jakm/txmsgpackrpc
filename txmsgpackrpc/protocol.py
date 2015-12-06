@@ -8,6 +8,7 @@ from __future__ import print_function
 
 import logging
 import msgpack
+import sys
 from collections import defaultdict, deque, namedtuple
 from twisted.internet import defer, protocol
 from twisted.protocols import policies
@@ -173,12 +174,17 @@ class MsgpackBaseProtocol(object):
         try:
             # If the remote_method has a keyword argment called msgid, then pass
             # it the msgid as a keyword argument. 'params' is always a list.
-            method_arguments = method.func_code.co_varnames
+            if sys.version_info.major == 2:
+                method_arguments = method.func_code.co_varnames
+            elif sys.version_info.major == 3:
+                method_arguments = method.__code__.co_varnames
+            else:
+                raise NotImplementedError('Unsupported Python version %s' % sys.version_info.major)
+
             if 'msgid' in method_arguments:
                 send_msgid = True
         except Exception:
             pass
-
 
         try:
             if send_msgid:
