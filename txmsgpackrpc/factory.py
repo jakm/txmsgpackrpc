@@ -49,6 +49,7 @@ class MsgpackClientFactory(protocol.ReconnectingClientFactory):
         protocol.ReconnectingClientFactory.clientConnectionFailed(self, connector, reason)
 
         if self.maxRetries is not None and (self.retries > self.maxRetries):
+            self.stopTrying()
             self.handler.callbackWaitingForConnection(lambda d: d.errback(reason))
 
     def clientConnectionLost(self, connector, reason):
@@ -57,6 +58,7 @@ class MsgpackClientFactory(protocol.ReconnectingClientFactory):
         protocol.ReconnectingClientFactory.clientConnectionLost(self, connector, reason)
 
         if self.maxRetries is not None and (self.retries > self.maxRetries):
+            self.stopTrying()
             self.handler.callbackWaitingForConnection(lambda d: d.errback(reason))
 
     def addConnection(self, connection):
