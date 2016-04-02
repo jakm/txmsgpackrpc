@@ -11,6 +11,9 @@ try:
     linked_path = setup_path + '.lnk'
     os.link(setup_path, linked_path)
     os.unlink(linked_path)
+except AttributeError:
+    # Windows support of os.link was added in Python 3.2
+    pass
 except OSError as e:
     import errno
     if e.errno == errno.EPERM:
