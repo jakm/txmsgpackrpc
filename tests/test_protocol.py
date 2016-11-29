@@ -81,6 +81,16 @@ class MsgpackTestCase(unittest.TestCase):
         ret  = 7
         return self._test_request(method="sum", value=args, expected_result=ret, expected_error=None)
 
+    def test_list(self):
+        args = (2,5)
+        ret  = [2,5]
+        return self._test_request(value=args, expected_result=ret, expected_error=None)
+
+    def test_tuple(self):
+        args = (2,5)
+        ret  = args
+        return self._test_request(value=args, expected_result=ret, expected_error=None, use_list=False)
+
     def _test_notification(self, method="notify", value=""):
         message = (MSGTYPE_NOTIFICATION, method, (value,))
         packed_message = self.packer.pack(message)
@@ -88,7 +98,8 @@ class MsgpackTestCase(unittest.TestCase):
         return_value = self.transport.value()
         self.assertEqual(return_value, b"")
 
-    def _test_request(self, operation=MSGTYPE_REQUEST, method="echo", value="", expected_result="", expected_error=None):
+    def _test_request(self, operation=MSGTYPE_REQUEST, method="echo", value="", expected_result="",
+                      expected_error=None, use_list=True):
         index = MsgpackTestCase.request_index
         MsgpackTestCase.request_index += 1
 
@@ -103,7 +114,7 @@ class MsgpackTestCase(unittest.TestCase):
 
         self.assertEqual(return_value, packed_response)
 
-        unpacked_response = msgpack.loads(return_value)
+        unpacked_response = msgpack.loads(return_value, use_list=use_list)
         (msgType, msgid, methodName, params) = unpacked_response
 
         self.assertEqual(msgType, MSGTYPE_RESPONSE)

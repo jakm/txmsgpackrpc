@@ -31,7 +31,7 @@ class MsgpackBaseProtocol(object):
     """
     msgpack rpc client/server protocol - base implementation
     """
-    def __init__(self, sendErrors=False, packerEncoding="utf-8", unpackerEncoding="utf-8"):
+    def __init__(self, sendErrors=False, packerEncoding="utf-8", unpackerEncoding="utf-8", useList=True):
         """
         @param sendErrors: forward any uncaught Exception details to remote peer.
         @type sendErrors: C{bool}.
@@ -39,13 +39,15 @@ class MsgpackBaseProtocol(object):
         @type packerEncoding: C{str}
         @param unpackerEncoding: encoding used for decoding msgpack bytes. Default is 'utf-8'.
         @type unpackerEncoding: C{str}.
+        @param useList: If true, unpack msgpack array to Python list.  Otherwise, unpack to Python tuple.
+        @type unpackerEncoding: C{bool}.
         """
         self._sendErrors = sendErrors
         self._incoming_requests = {}
         self._outgoing_requests = {}
         self._next_msgid = 0
         self._packer = msgpack.Packer(encoding=packerEncoding)
-        self._unpacker = msgpack.Unpacker(encoding=unpackerEncoding, unicode_errors='strict')
+        self._unpacker = msgpack.Unpacker(encoding=unpackerEncoding, unicode_errors='strict', use_list=useList)
 
     def isConnected(self):
         raise NotImplementedError('Must be implemented in descendant')
