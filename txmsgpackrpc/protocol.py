@@ -40,7 +40,7 @@ class MsgpackBaseProtocol(object):
         @param unpackerEncoding: encoding used for decoding msgpack bytes. Default is 'utf-8'.
         @type unpackerEncoding: C{str}.
         @param useList: If true, unpack msgpack array to Python list.  Otherwise, unpack to Python tuple.
-        @type unpackerList: C{bool}.
+        @type useList: C{bool}.
         """
         self._sendErrors = sendErrors
         self._incoming_requests = {}
