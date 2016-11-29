@@ -309,7 +309,7 @@ class MsgpackStreamProtocol(protocol.Protocol, policies.TimeoutMixin, MsgpackBas
 
     @ivar factory: The L{MsgpackClientFactory} or L{MsgpackServerFactory}  which created this L{Msgpack}.
     """
-    def __init__(self, factory, sendErrors=False, timeout=None, packerEncoding="utf-8", unpackerEncoding="utf-8"):
+    def __init__(self, factory, sendErrors=False, timeout=None, packerEncoding="utf-8", unpackerEncoding="utf-8", useList=True):
         """
         @param factory: factory which created this protocol.
         @type factory: C{protocol.Factory}.
@@ -321,8 +321,10 @@ class MsgpackStreamProtocol(protocol.Protocol, policies.TimeoutMixin, MsgpackBas
         @type packerEncoding: C{str}
         @param unpackerEncoding: encoding used for decoding msgpack bytes. Default is 'utf-8'.
         @type unpackerEncoding: C{str}.
+        @param useList: If true, unpack msgpack array to Python list.  Otherwise, unpack to Python tuple.
+        @type useList: C{bool}.
         """
-        super(MsgpackStreamProtocol, self).__init__(sendErrors, packerEncoding, unpackerEncoding)
+        super(MsgpackStreamProtocol, self).__init__(sendErrors, packerEncoding, unpackerEncoding, useList)
         self.factory = factory
         self.setTimeout(timeout)
         self.connected = 0
@@ -371,7 +373,8 @@ class MsgpackDatagramProtocol(protocol.DatagramProtocol, MsgpackBaseProtocol):
     """
     msgpack rpc client/server datagram protocol
     """
-    def __init__(self, address=None, handler=None, sendErrors=False, timeout=None, packerEncoding="utf-8", unpackerEncoding="utf-8"):
+    def __init__(self, address=None, handler=None, sendErrors=False, timeout=None, packerEncoding="utf-8",
+                 unpackerEncoding="utf-8", useList=True):
         """
         @param address: tuple(host,port) containing address of client where protocol will connect to.
         @type address: C{tuple}.
@@ -385,8 +388,10 @@ class MsgpackDatagramProtocol(protocol.DatagramProtocol, MsgpackBaseProtocol):
         @type packerEncoding: C{str}
         @param unpackerEncoding: encoding used for decoding msgpack bytes. Default is 'utf-8'.
         @type unpackerEncoding: C{str}.
+        @param useList: If true, unpack msgpack array to Python list.  Otherwise, unpack to Python tuple.
+        @type useList: C{bool}.
         """
-        super(MsgpackDatagramProtocol, self).__init__(sendErrors, packerEncoding, unpackerEncoding)
+        super(MsgpackDatagramProtocol, self).__init__(sendErrors, packerEncoding, unpackerEncoding, useList)
 
         if address:
             if not isinstance(address, tuple) or len(address) != 2:
@@ -486,7 +491,8 @@ class MsgpackMulticastDatagramProtocol(MsgpackDatagramProtocol, MsgpackBaseProto
     """
     msgpack rpc client/server multicast datagram protocol
     """
-    def __init__(self, group, ttl, port=None, timeout=30, handler=None, sendErrors=False, packerEncoding="utf-8", unpackerEncoding="utf-8"):
+    def __init__(self, group, ttl, port=None, timeout=30, handler=None, sendErrors=False, packerEncoding="utf-8",
+                 unpackerEncoding="utf-8", useList=True):
         """
         @param group: IP of multicast group that will be joined.
         @type group: C{str}.
@@ -506,9 +512,11 @@ class MsgpackMulticastDatagramProtocol(MsgpackDatagramProtocol, MsgpackBaseProto
         @type packerEncoding: C{str}
         @param unpackerEncoding: encoding used for decoding msgpack bytes. Default is 'utf-8'.
         @type unpackerEncoding: C{str}.
+        @param useList: If true, unpack msgpack array to Python list.  Otherwise, unpack to Python tuple.
+        @type useList: C{bool}.
         """
         super(MsgpackMulticastDatagramProtocol, self).__init__(handler=handler, timeout=timeout, sendErrors=sendErrors,
-            packerEncoding=packerEncoding, unpackerEncoding=unpackerEncoding)
+            packerEncoding=packerEncoding, unpackerEncoding=unpackerEncoding, useList=True)
 
         self.group = group
         self.ttl = ttl
