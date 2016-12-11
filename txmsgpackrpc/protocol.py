@@ -516,7 +516,7 @@ class MsgpackMulticastDatagramProtocol(MsgpackDatagramProtocol, MsgpackBaseProto
         @type useList: C{bool}.
         """
         super(MsgpackMulticastDatagramProtocol, self).__init__(handler=handler, timeout=timeout, sendErrors=sendErrors,
-            packerEncoding=packerEncoding, unpackerEncoding=unpackerEncoding, useList=True)
+            packerEncoding=packerEncoding, unpackerEncoding=unpackerEncoding, useList=useList)
 
         self.group = group
         self.ttl = ttl
