@@ -1,0 +1,14 @@
+# Travis CI (http://travis-ci.org/) is a continuous integration
+# service for open source projects. This file configures it
+# to run unit tests for txmsgpackrpc.
+
+language: python
+
+python:
+    - 2.7
+    - 3.3
+    - 3.4
+    - 3.5
+
+script:
+    - trial tests
