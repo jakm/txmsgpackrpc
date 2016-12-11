@@ -64,12 +64,12 @@ class MsgpackTestCase(unittest.TestCase):
         self.packer = msgpack.Packer(encoding="utf-8")
 
     def test_request_string(self):
-        arg = "SIMON SAYS"
+        arg = b"SIMON SAYS"
         return self._test_request(value=arg, expected_result=arg, expected_error=None)
 
     def test_request_dict(self):
-        arg = {"A":1234}
-        ret = {"A":1234, "new_key":1}
+        arg = {b"A":1234}
+        ret = {b"A":1234, b"new_key":1}
         return self._test_request(method="insert_key", value=arg, expected_result=ret, expected_error=None)
 
     def test_notify(self):
@@ -86,7 +86,7 @@ class MsgpackTestCase(unittest.TestCase):
         packed_message = self.packer.pack(message)
         self.proto.dataReceived(packed_message)
         return_value = self.transport.value()
-        self.assertEqual(return_value, "")
+        self.assertEqual(return_value, b"")
 
     def _test_request(self, operation=MSGTYPE_REQUEST, method="echo", value="", expected_result="", expected_error=None):
         index = MsgpackTestCase.request_index
