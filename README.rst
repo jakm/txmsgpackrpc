@@ -1,6 +1,9 @@
 txmsgpackrpc
 ============
 
+.. image:: https://travis-ci.org/jakm/txmsgpackrpc.svg?branch=master
+   :target: https://travis-ci.org/jakm/txmsgpackrpc
+
 For the latest source code, see http://github.com/jakm/txmsgpackrpc
 
 ``txmsgpackrpc`` is a library for writing asynchronous
