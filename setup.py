@@ -2,7 +2,7 @@ import os.path
 import setuptools
 
 
-__VERSION__ = "1.1"
+__VERSION__ = "1.2"
 
 
 # Hard linking doesn't work inside some virtual FS's.

@@ -1,3 +1,23 @@
+txmsgpackrpc (1.2) unstable; urgency=low
+
+  [ Jakub Matys ]
+  * Allow UNIX sockets for PY3 with Twisted >= 15.3.0
+  * Build script changed to optionaly build deb package and/or upload to pypi
+  * Fixed detection of 'msgid' param for Python3
+  * 'stopTrying' to reconnect when max number of connection attempts failed
+  * Issue #4: fixed installation in Windows
+  * Support for CI
+  * Added status icon
+
+  [ tobixx ]
+  * added useList parameter
+  * fixed type docu
+  * fixed type docu, the second
+  * forwarding trough layers
+  * fixed not forwarded parameter in super call
+
+ -- Jakub Matys <matys.jakub@gmail.com>  Sun, 18 Dec 2016 14:07:07 +0100
+
 txmsgpackrpc (1.1) unstable; urgency=low
 
   * Issue #2: reset packer after serialization error
