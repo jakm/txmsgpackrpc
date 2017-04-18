@@ -67,6 +67,51 @@ class SimpleConnectionHandler(object):
         d.addCallback(lambda conn: conn.createNotification(method, params))
         return d
 
+    def createSubscribe(self, topic, callback):
+        """
+        Create new subscription request to a topic. If connection is not
+        established, request will be deferred until new connection is made or
+        error is detected.
+
+        Possible exceptions:
+        * C{error.ConnectionError}: all connection attempts failed
+        * C{error.ResponseError}: remote method returned error value
+        * C{error.TimeoutError}: waitTimeout expired during request processing
+        * C{t.i.e.ConnectionClosed}: connection closed during request processing
+
+        @param topic: Topic to subscribe
+        @type topci: C{str}
+        @param callback: callback to call when an event occurs for the topic
+        @return Returns Deferred that callbacks with result of RPC method or
+            errbacks with C{error.MsgpackError}.
+        @rtype C{t.i.d.Deferred}
+        """
+        d = self.getConnection()
+        d.addCallback(lambda conn: conn.createSubscribe(topic, callback))
+        return d
+
+    def createUnsubscribe(self, topic):
+        """
+        Create new unsubscription request to a topic. If connection is not
+        established, request will be deferred until new connection is made or
+        error is detected.
+
+        Possible exceptions:
+        * C{error.ConnectionError}: all connection attempts failed
+        * C{error.ResponseError}: remote method returned error value
+        * C{error.TimeoutError}: waitTimeout expired during request processing
+        * C{t.i.e.ConnectionClosed}: connection closed during request processing
+
+        @param topic: Topic to unsubscribe
+        @type topci: C{str}
+        @return Returns Deferred that callbacks with result of RPC method or
+            errbacks with C{error.MsgpackError}.
+        @rtype C{t.i.d.Deferred}
+        """
+        d = self.getConnection()
+        d.addCallback(lambda conn: conn.createUnsubscribe(topic))
+        return d
+
     def addConnection(self, connection):
         self.connection = connection
 

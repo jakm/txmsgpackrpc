@@ -22,6 +22,11 @@ from txmsgpackrpc.error import (ConnectionError, ResponseError, InvalidRequest,
 MSGTYPE_REQUEST=0
 MSGTYPE_RESPONSE=1
 MSGTYPE_NOTIFICATION=2
+MSGTYPE_PUBLISH=3
+MSGTYPE_SUBSCRIBE=4
+MSGTYPE_SUBSCRIBED=5
+MSGTYPE_UNSUBSCRIBE=6
+MSGTYPE_UNSUBSCRIBED=7
 
 
 Context = namedtuple('Context', ['peer'])
@@ -45,6 +50,7 @@ class MsgpackBaseProtocol(object):
         self._sendErrors = sendErrors
         self._incoming_requests = {}
         self._outgoing_requests = {}
+        self._topics= {}
         self._next_msgid = 0
         self._packer = msgpack.Packer(encoding=packerEncoding)
         self._unpacker = msgpack.Unpacker(encoding=unpackerEncoding, unicode_errors='strict', use_list=useList)
@@ -116,6 +122,98 @@ class MsgpackBaseProtocol(object):
         ctx = self.getClientContext()
         self.writeMessage(message, ctx)
 
+    def createSubscribe(self, topic, puback):
+        """
+        Create new event subscription. If protocol is not connected, errback with
+        C{ConnectionError} will be called.
+
+        Possible exceptions:
+        * C{error.ConnectionError}: all connection attempts failed
+        * C{error.ResponseError}: remote method returned error value
+        * C{error.TimeoutError}: waitTimeout expired during request processing
+        * C{t.i.e.ConnectionClosed}: connection closed during request processing
+
+        @param topic: topic name
+        @type topic: C{str}
+        @param params: RPC method parameters
+        @type params: C{tuple} or C{list}
+        @return Returns Deferred that callbacks with result of RPC method or
+            errbacks with C{error.MsgpackError}.
+        @rtype C{t.i.d.Deferred}
+        """
+        if topic in self._topics:
+            raise InvalidRequest("Already subscribed")
+        if not self.isConnected():
+            raise ConnectionError("Not connected")
+        self._topics[topic] = puback
+        msgid = self.getNextMsgid()
+        message = (MSGTYPE_SUBSCRIBE, msgid, topic)
+        ctx = self.getClientContext()
+        self.writeMessage(message, ctx)
+
+        df = defer.Deferred()
+        self._outgoing_requests[msgid] = df
+        return df
+
+    def createUnsubscribe(self, topic):
+        """
+        Create new event subscription. If protocol is not connected, errback with
+        C{ConnectionError} will be called.
+
+        Possible exceptions:
+        * C{error.ConnectionError}: all connection attempts failed
+        * C{error.ResponseError}: remote method returned error value
+        * C{error.TimeoutError}: waitTimeout expired during request processing
+        * C{t.i.e.ConnectionClosed}: connection closed during request processing
+
+        @param topic: topic name
+        @type topic: C{str}
+        @param params: RPC method parameters
+        @type params: C{tuple} or C{list}
+        @return Returns Deferred that callbacks with result of RPC method or
+            errbacks with C{error.MsgpackError}.
+        @rtype C{t.i.d.Deferred}
+        """
+        if not topic in self._topics:
+            raise InvalidRequest("Not subscribed")
+        if not self.isConnected():
+            raise ConnectionError("Not connected")
+        del self._topics[topic]
+        msgid = self.getNextMsgid()
+        message = (MSGTYPE_UNSUBSCRIBE, msgid, topic)
+        ctx = self.getClientContext()
+        self.writeMessage(message, ctx)
+
+        df = defer.Deferred()
+        self._outgoing_requests[msgid] = df
+        return df
+
+    def createPublish(self, topic, params):
+        """
+        Create new RPC notification. If protocol is not connected, errback with
+        C{ConnectionError} will be called.
+
+        Possible exceptions:
+        * C{error.ConnectionError}: all connection attempts failed
+        * C{t.i.e.ConnectionClosed}: connection closed during request processing
+
+        @param method: RPC method name
+        @type method: C{str}
+        @param params: RPC method parameters
+        @type params: C{tuple} or C{list}
+        @return Returns Deferred that callbacks with result of RPC method or
+            errbacks with C{error.MsgpackError}.
+        @rtype C{t.i.d.Deferred}
+        """
+        if not self.isConnected():
+            raise ConnectionError("Not connected")
+        if not type(params) in (list, tuple):
+            params = (params,)
+        message = (MSGTYPE_PUBLISH, topic, params)
+        ctx = self.getClientContext()
+        self.writeMessage(message, ctx)
+
+
     def getNextMsgid(self):
         self._next_msgid += 1
         return self._next_msgid
@@ -135,6 +233,16 @@ class MsgpackBaseProtocol(object):
             return self.responseReceived(message)
         if message[0] == MSGTYPE_NOTIFICATION:
             return self.notificationReceived(message)
+        if message[0] == MSGTYPE_SUBSCRIBE:
+            return self.subscribeReceived(message, context)
+        if message[0] == MSGTYPE_SUBSCRIBED:
+            return self.responseReceived(message)
+        if message[0] == MSGTYPE_UNSUBSCRIBE:
+            return self.unsubscribeReceived(message, context)
+        if message[0] == MSGTYPE_UNSUBSCRIBED:
+            return self.responseReceived(message, context)
+        if message[0] == MSGTYPE_PUBLISH:
+            return self.publishReceived(message)
 
         return self.undefinedMessageReceived(message)
 
@@ -301,6 +409,72 @@ class MsgpackBaseProtocol(object):
         while self._outgoing_requests:
             msgid, d = self._outgoing_requests.popitem()
             func(d)
+
+    def publishReceived(self, message):
+        try:
+            (msgType, topic, params) = message
+        except Exception as e:
+            if self._sendErrors:
+                raise
+            raise InvalidResponse("Failed to unpack response: %s" % e)
+
+        try:
+            self._topics[topic](topic, params)
+        except KeyError:
+            return
+
+    def subscribeReceived(self, message, context):
+        try:
+            (msgType, msgid, topic) = message
+        except ValueError:
+            if self._sendErrors:
+                raise
+            if not len(message) == 3:
+                raise InvalidData("Incorrect message length. Expected 3; received %s" % len(message))
+            raise InvalidData("Failed to unpack request.")
+        except Exception:
+            if self._sendErrors:
+                raise
+            raise InvalidData("Unexpected error. Failed to unpack request.")
+
+        if msgid in self._incoming_requests:
+            raise InvalidRequest("Request with msgid '%s' already exists" % msgid)
+
+        result = defer.maybeDeferred(self.callRemoteMethod, msgid, 'subscribe', (self, topic))
+
+        self._incoming_requests[msgid] = (result, context)
+
+        result.addCallback(self.respondCallback, msgid)
+        result.addErrback(self.respondErrback, msgid)
+        result.addBoth(self.endRequest, msgid)
+        return result
+
+    def unsubscribeReceived(self, message, context):
+        try:
+            (msgType, msgid, topic) = message
+        except ValueError:
+            if self._sendErrors:
+                raise
+            if not len(message) == 3:
+                raise InvalidData("Incorrect message length. Expected 3; received %s" % len(message))
+            raise InvalidData("Failed to unpack request.")
+        except Exception:
+            if self._sendErrors:
+                raise
+            raise InvalidData("Unexpected error. Failed to unpack request.")
+
+        if msgid in self._incoming_requests:
+            raise InvalidRequest("Request with msgid '%s' already exists" % msgid)
+
+        result = defer.maybeDeferred(self.callRemoteMethod, msgid, 'unsubscribe', (self, topic))
+
+        self._incoming_requests[msgid] = (result, context)
+
+        result.addCallback(self.respondCallback, msgid)
+        result.addErrback(self.respondErrback, msgid)
+        result.addBoth(self.endRequest, msgid)
+        return result
+
 
 
 class MsgpackStreamProtocol(protocol.Protocol, policies.TimeoutMixin, MsgpackBaseProtocol):
