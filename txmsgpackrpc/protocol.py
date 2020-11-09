@@ -81,7 +81,7 @@ class MsgpackBaseProtocol(object):
         @rtype C{t.i.d.Deferred}
         """
         if not self.isConnected():
-            raise ConnectionError("Not connected")
+            defer.fail(ConnectionError("Not connected"))
         msgid = self.getNextMsgid()
         message = (MSGTYPE_REQUEST, msgid, method, params)
         ctx = self.getClientContext()

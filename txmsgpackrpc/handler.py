@@ -77,7 +77,7 @@ class SimpleConnectionHandler(object):
 
     def waitForConnection(self):
         if not self.factory.continueTrying:
-            raise ConnectionError("Not connected")
+            return defer.fail(ConnectionError("Not connected"))
 
         if self.connection and self.connection.connected:
             return defer.succeed(self)
@@ -227,7 +227,7 @@ class PooledConnectionHandler(object):
 
     def waitForConnection(self):
         if not self.factory.continueTrying:
-            raise ConnectionError("Not connected")
+            return defer.fail(ConnectionError("Not connected"))
 
         if self.size:
             return defer.succeed(self)
